@@ -70,7 +70,12 @@ weighings (Pair u g) = [TPair (a,b) (a+b, 0) | a<-[0..u], b<-[0..g],
      (a+b) > 0,
      ((2*a)+b) <= u,
      b <= g]
-weighings (Triple l h g) = [TTrip (a, a, a) (a, a, a)| a<-[0..1]]
+weighings (Triple l h g) = [TTrip (a, b, c) (d, e, f)| k1<-[1..k],
+     (a, b, c) <- choices k1 (l, h, g),
+     (d, e, f) <- choices k1 (l, h, g),
+      c == 0, f == 0, (a,b,c) <= (d,e,f), (c+f) <= g, (b+e) <= h, (a+d) <= l, (a+b+c) == (d+e+f)]
+        where
+            k = (l+h+g) `div` 2
 
 {-
 expected:
@@ -79,9 +84,11 @@ expected:
 choices :: Int -> (Int, Int, Int) -> [(Int, Int, Int)]
 choices k (l, h, g) = [(i,j,k-i-j)| i<-[0..l], j<-[0..h], (k-i-j) <= g, (k-i-j) >= 0]
 
--- instance Ord State where ...
+--instance Ord State where
 
--- productive :: State -> Test -> Bool
+
+productive :: State -> Test -> Bool
+productive (Triple l h g) (TTrip (a,b,c) (d,e,f)) = 
 
 {-For example state Triple 3 0 6 admits 5 weightings, 
 but one of these is unproductive, 
