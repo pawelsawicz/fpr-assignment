@@ -8,6 +8,8 @@ Questions
 2. Benetif of representing problem in such a way ?
 -}
 
+{-Ideas, check if State and Test are functors, probably not-}
+
 {- Pair (u,g) - unknown, geniue-}
 {- Triple (l,h,g)- lighter, heavier, geniue -}
 data State = Pair Int Int | Triple Int Int Int
@@ -106,7 +108,7 @@ tests s = filter (productive s) (weighings s)
 {--4. Decision Tree-}
 
 data Tree = Stop State | Node Test [Tree]
-    deriving Show
+    deriving (Show)
 
 final :: State -> Bool
 final (Pair u g)
@@ -117,7 +119,26 @@ final (Triple l h g)
     | l == 0 && h == 1 = True
     | otherwise = False 
 
--- height :: Tree -> Int
+{-
+Example data : height (Node (TPair (3,0) (3,0)) [(Stop (Pair 6 6))])
+-}
+
+testTree :: Tree
+testTree = (Node (TPair (6,0) (6,0)) [Node (TPair (3,0) (3,0)) [], Node (TTrip (1,0,0) (1,0,0)) [], Node (TTrip (1,0,0) (1,0,0)) []])
+
+nestedTree :: Tree
+nestedTree = (Node (TPair (6,0) (6,0)) 
+    [Node (TPair (3,0) (3,0)) [testTree], Node (TTrip (1,0,0) (1,0,0)) [testTree], Node (TTrip (1,0,0) (1,0,0)) [testTree]])
+
+{-use maximum, and foldable-}
+
+height :: Tree -> Int
+height (Stop s) = 0
+height (Node _ []) = 0 
+height (Node _ (x:xs)) = 1 + height x
+height (Node _ (x:y:xs)) = 1 + max (height x) (height y)
+height (Node _ (x:y:z:xs)) = (+) 1 $ max (height z) $ max (height x) (height y)
+
 
 -- minHeight :: [Tree] -> Tree
 
