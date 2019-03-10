@@ -1,5 +1,6 @@
 import Data.List
 import Data.Ord
+import Data.Function
 
 {-
 Questions
@@ -130,7 +131,7 @@ nestedTree :: Tree
 nestedTree = (Node (TPair (6,0) (6,0)) 
     [Node (TPair (3,0) (3,0)) [testTree], Node (TTrip (1,0,0) (1,0,0)) [testTree], Node (TTrip (1,0,0) (1,0,0)) [testTree]])
 
-{-use maximum, and foldable-}
+{-use maximum, and foldable, needs optimisation and generalization-}
 
 height :: Tree -> Int
 height (Stop s) = 0
@@ -139,10 +140,35 @@ height (Node _ (x:xs)) = 1 + height x
 height (Node _ (x:y:xs)) = 1 + max (height x) (height y)
 height (Node _ (x:y:z:xs)) = (+) 1 $ max (height z) $ max (height x) (height y)
 
+{-Check if I could instance Ord typeclass for Tree,
+ such that t < t' iff height t < height t' -}
 
--- minHeight :: [Tree] -> Tree
+-- instance Ord Tree where
+--     t < t' = height t < height t'
+--     t <= t' = height t <= height t'
+{--def need optimisation, use foldl ?-}
+minHeight :: [Tree] -> Tree
+minHeight xs = snd $ head $ sortBy (compare `on` (\(y,_) -> y)) $ map (\x -> (height x, x)) xs
 
--- mktree :: State -> Tree
+{-intermediate setps-}
+-- minHeight' :: [Tree] -> [(Int, Tree)]
+-- minHeight' xs = sortBy (compare `on` (\(y,_) -> y)) $ map (\x -> (height x, x)) xs
+
+mktree :: State -> Tree
+mktree s
+    | (final s) == True = Stop s
+    | otherwise = minHeight $ map (\(t, ss) -> (Node t [])) $ map ((\t -> (t, outcomes s))) $ tests s
+
+--lazy eval on Test->State
+
+mktree' :: State -> [Tree]
+mktree' s
+    | (final s) == True = [Stop s]
+    | otherwise = makeTree $ productiveOutcomes $ productiveTests
+        where
+            productiveTests = tests s
+            productiveOutcomes = map ((\t -> (t, outcomes s t)))
+            makeTree = map (\(t, xs) -> (Node t (concat $ map mktree' xs))) {-- check that!!!-}
 
 {-5 Caching heights-}
 
