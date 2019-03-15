@@ -207,7 +207,17 @@ tree2treeH (Node t ts) = (NodeH 0 t (map tree2treeH ts))
 
 {-6. Greedy solution-}
 
--- optimal :: State -> Test -> Bool
+optimal :: State -> Test -> Bool
+optimal (Pair u g) (TPair (a,b) (ab,0)) = (2 * a + b <= p) && (u - 2 * a - b <= q)
+        where
+            p = 3
+            q = (p - 1) `div` 2
+            t = ceiling (logBase 3 (fromIntegral (2 * u + k)))
+            k = if g == 0 then 2 else 1
+optimal (Triple l h g) (TTrip (a,b,c) (d,e,f)) = (a+e) `max` (b+d) `max` (1-a-d+h-b-e) <= p
+        where
+            p = 3
+            t = ceiling (logBase 3 (fromIntegral (l+h)))
 
 -- bestTests :: State -> [Test]
 
