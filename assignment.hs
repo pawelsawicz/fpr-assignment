@@ -175,18 +175,33 @@ mktree' s
 data TreeH = StopH State | NodeH Int Test [TreeH]
     deriving Show
 
--- heightH :: TreeH -> Int
--- heightH (StopH s) = 0
--- heightH (NodeH h t ts) = h
+heightH :: TreeH -> Int
+heightH (StopH s) = 0
+heightH (NodeH h t ts) = h
 
 {- Convert labelled TreeH back to the corresponding Tree -}
--- treeH2tree :: TreeH -> Tree
+treeH2tree :: TreeH -> Tree
+treeH2tree (StopH s) = (Stop s)
+treeH2tree (NodeH h t []) = (Node t [])
+treeH2tree (NodeH h t [th]) = (Node t [treeH2tree th]) -- dont need this
+treeH2tree (NodeH h t ths) = (Node t (map treeH2tree ths))
 
--- nodeH :: Test -> [TreeH] -> TreeH
+--nodeH :: Test -> [TreeH] -> TreeH
 
--- tree2treeH :: Tree -> TreeH
+tree2treeH :: Tree -> TreeH
+tree2treeH (Stop s) = (StopH s)
+tree2treeH (Node t []) = (NodeH 0 t [])
+tree2treeH (Node t [ts]) = (NodeH 0 t [tree2treeH ts])
+tree2treeH (Node t ts) = (NodeH 0 t (map tree2treeH ts))
 
 -- mktreeH :: State -> TreeH
+-- mktreeH s
+--     | (final s) == True = (StopH s)
+--     | otherwise = makeTree $ productiveOutcomes $ productiveTests
+--         where
+--             productiveTests = tests s
+--             productiveOutcomes = map ((\t -> (t, outcomes s t)))
+--             makeTree = map (\(t, xs) -> (NodeH 0 t (concat $ map mktree' xs))) {-- check that!!!-}
 
 {-use :set +s to check eval time-}
 
