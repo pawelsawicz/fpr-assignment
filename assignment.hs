@@ -210,20 +210,33 @@ tree2treeH (Node t ts) = (NodeH 0 t (map tree2treeH ts))
 optimal :: State -> Test -> Bool
 optimal (Pair u g) (TPair (a,b) (ab,0)) = (2 * a + b <= p) && (u - 2 * a - b <= q)
         where
-            p = 3
+            p = 3 ^ (t - 1)
             q = (p - 1) `div` 2
             t = ceiling (logBase 3 (fromIntegral (2 * u + k)))
             k = if g == 0 then 2 else 1
 optimal (Triple l h g) (TTrip (a,b,c) (d,e,f)) = (a+e) `max` (b+d) `max` (1-a-d+h-b-e) <= p
         where
-            p = 3
+            p = 3 ^ (t - 1)
             t = ceiling (logBase 3 (fromIntegral (l+h)))
 
--- bestTests :: State -> [Test]
+bestTests :: State -> [Test]
+bestTests s = filter (optimal s) (weighings s)
 
--- mktreeG :: State -> TreeH
+mktreeG :: State -> TreeH
+mktreeG s
+    | (final s) == True = (StopH s)
+    | otherwise = makeTree -- Node h t [TreeH]
+        where
+            optimalTest = head (bestTests s)
+            makeTree = (NodeH 0 optimalTest (map mktreeG (outcomes s optimalTest)))
 
--- mktreesG :: State -> [TreeH]
+mktreesG :: State -> [TreeH]
+mktreesG s
+    | (final s) == True = [StopH s]
+    | otherwise = makeTree
+        where
+            optimalTests = bestTests s
+            makeTree = map (\t -> (NodeH 0 t (map mktreeG (outcomes s t)))) optimalTests
 
 -- other questions
 -- use modules ??
