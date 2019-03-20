@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveFunctor, DeriveFoldable #-}
+
 import Data.List
 import Data.Ord
 import Data.Function
@@ -13,11 +15,34 @@ Questions
 
 {- Pair (u,g) - unknown, geniue-}
 {- Triple (l,h,g)- lighter, heavier, geniue -}
+{- 
+State datatype represent model of the state of the simulation
+State datatype has two constructors, Pair and Triple. 
+We should note here that in Haskell everything is a function, it's same case for constructors.
+Pair constructor has type `Int->Int->State` generaly speaking, it means that it accepts two params of the type Int
+and returns State.
+
+As with any function we can partially apply it, so that (Pair 3) returns a function of the type (Int->State).
+-}
 data State = Pair Int Int | Triple Int Int Int
     deriving (Eq, Show)
 
 {-TPair (a,b) (c,d) - denotes, weighting a coins from file U plus b coins from pile G 
 against c coins from pile U, d coind from pile G-}
+{-
+Datatype Test represents conducted tests, which consist of weighting one group 
+of k coins against another group of k coins.
+
+Similarrly to State, Test datatype has two constructors, TPair and TTrip.
+TPair accepts two tuples and returns Test
+TTrip accepts triples and returns Test.
+
+Those constructors are also funstions, so we can partially apply it.
+We could even use `curry` function on any of a constructor of the Test, 
+transforming TPair function type into Int->Int->(Int, Int) -> State, 
+then we could partially apply function to first element of a tuple.
+
+-}
 data Test = TPair (Int, Int) (Int, Int) | TTrip (Int,Int,Int) (Int,Int,Int)
     deriving (Eq, Show)
 
@@ -240,3 +265,8 @@ mktreesG s
 
 -- other questions
 -- use modules ??
+
+{-more generalized form of solution, functor -}
+
+-- data TreeFunc a = StopF State | NodeF a [TreeFunc a]
+--     deriving (Show, Functor)
