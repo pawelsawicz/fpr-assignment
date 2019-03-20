@@ -53,9 +53,12 @@ above criteria. For example valid (Pair 12 0) (TPair (3,0) (3,0)) = True
 -- todo check Eq class type, and maybe reuse it ?? Maybe introduce new typeclass ?
 -- valid (Pair 12 0) (TPair (3,0) (3,0))
 
+--DONE
 valid :: State -> Test -> Bool
-valid (Pair u g) (TPair (a, b) (c ,d)) = (u+g) > (a+b+c+d)
-valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) = (l+h+g) > (a+b+c+d+e+f)
+valid (Pair u g) (TPair (a, b) (c ,d)) =
+    (u+g) > (a+b+c+d) && (a+b) == (c+d)
+valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) = 
+    (l+h+g) > (a+b+c+d+e+f) && (a+b+c) == (d+e+f)
 
 {-Test data:
     As stated in instruction (page 2). TPair can be only conducted in a Pair state, and
@@ -74,6 +77,10 @@ valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) = (l+h+g) > (a+b+c+d+e+f)
         - Scales are symmetric, (TPair, TTrip)
         - Test must guaranteed to increase our knowledge
 -}
+-- For (3 3 6) and (1 0 0) (0 1 0), it should yield (1 1 10) (1 1 10) (2 2 8)
+-- Let's see generlaised version, For (l h g) and (k 0 0) (0 k 0), 
+--yields (k k g+(l-k)+(h-k)), (k k g+(l-k)+(h-k)), (l-k, h-k, g+2k)
+-- do we need to check valid ?, otherwise empty set ?
 outcomes :: State -> Test -> [State]
 outcomes (Pair u g) (TPair (a, b) (c, d)) 
     =   [Pair gcc gc] ++ [Triple l h gcc] ++ [Triple l h gcc]
