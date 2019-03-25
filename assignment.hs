@@ -54,11 +54,24 @@ above criteria. For example valid (Pair 12 0) (TPair (3,0) (3,0)) = True
 -- valid (Pair 12 0) (TPair (3,0) (3,0))
 
 --DONE
+{-
+Valid function checks if for state provided test make sense 
+(please see page XX for constrains)
+In this function, Ive used patter matching.       
+-}
+
+-- Numbers of coins in each pan guarded by first predicate
+-- Sufficiently many coins th the various piles for the test
 valid :: State -> Test -> Bool
 valid (Pair u g) (TPair (a, b) (c ,d)) =
-    (u+g) > (a+b+c+d) && (a+b) == (c+d)
+    (a+b) == (c+d) &&
+    (a+c) <= u && 
+    (a+b+c+d) <= (u+g)
 valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) = 
-    (l+h+g) > (a+b+c+d+e+f) && (a+b+c) == (d+e+f)
+    (a+b+c) == (d+e+f) &&
+    (a+d) <= l &&
+    (b+e) <= h &&
+    (c+f) <= f  
 
 {-Test data:
     As stated in instruction (page 2). TPair can be only conducted in a Pair state, and
@@ -81,24 +94,52 @@ valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) =
 -- Let's see generlaised version, For (l h g) and (k 0 0) (0 k 0), 
 --yields (k k g+(l-k)+(h-k)), (k k g+(l-k)+(h-k)), (l-k, h-k, g+2k)
 -- do we need to check valid ?, otherwise empty set ?
+{-
+Outcomes function generate set of possible outcomes (states) for given state and test.
+More information can be found on page XX.
+As you can see, there was used keyword where which introduce local
+variables in the scope of ...
+
+-- Some ideas for improvment ??
+
+-}
+-- (Pair u g) (TPair (a, b) (c, d))
+-- (Triple l h g) (TTrip (a, b, c) (d, e, f))
 outcomes :: State -> Test -> [State]
-outcomes (Pair u g) (TPair (a, b) (c, d)) 
-    =   [Pair gcc gc] ++ [Triple l h gcc] ++ [Triple l h gcc]
-            where
-                gcc = u - (a + c)  
-                gc  = g + a + c
-                l   = a
-                h   = c
-outcomes (Triple l h g) (TTrip (a, b, c) (d, e, f)) 
-    =   [Triple (l-a) h (g+d)]
-        ++ [Triple (l-a-b-d-e) (h+a+b) (g+d+e)]
-        ++ [Triple (l-a) h (g+d)]  
+outcomes (Pair u g) (TPair (a, b) (c, d))
+    | valid (Pair u g) (TPair (a, b) (c, d)) == True = 
+        [Pair gcc gc] ++
+        [Triple l h gcc] ++
+        [Triple l h gcc]        
+    | otherwise = []
+        where
+           gcc = u - (a + c)  
+           gc  = g + a + c
+           l   = a
+           h   = c
+outcomes (Triple l h g) (TTrip (a, b, c) (d, e, f))
+    | valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) == True = 
+        [Triple (a+b) (d+e) (g+(l-(a+b))+(h-(d+e)))] ++ -- 1 1 10
+        [Triple (a+b) (d+e) (g+(l-(a+b))+(h-(d+e)))] ++ -- 1 1 10
+        [Triple (l-(a+b)) (h-(d+e)) (g+a+b+d+e)] -- 2 2 8
+    | otherwise = []
 
 {-
 expected:
  - weighings (Pair 3 3) = [TPair (0, 1) (1, 0), TPair (0, 2) (2, 0),
  TPair (0, 3) (3, 0), TPair (1, 0) (1, 0), TPair (1, 1) (2, 0)]
 -}                
+{-
+Weightings is a function that generates valueable tests for given state.
+(Constrains can be find page XX)
+In this function I've used set comprehension 
+`[x | x <- T | P ]` where T is type of [T] and P is a predicate on z 
+In this case there predicate segment has
+ multiple predicates they behave as logical `and`.
+
+There not much that can be improved 
+
+-}
 weighings :: State -> [Test]
 weighings (Pair u g) = [TPair (a,b) (a+b, 0) | a<-[0..u], b<-[0..g],
      (a+b) > 0,
@@ -115,10 +156,22 @@ weighings (Triple l h g) = [TTrip (a, b, c) (d, e, f)| k1<-[1..k],
 expected:
 - choices 3 (2,2,2) = 
 -}
+{-
+choices function operates on primitives, Int -> (Int,...). 
+For given imput returns set of possible
+-}
 choices :: Int -> (Int, Int, Int) -> [(Int, Int, Int)]
 choices k (l, h, g) = [(i,j,k-i-j)| i<-[0..l], j<-[0..h], (k-i-j) <= g, (k-i-j) >= 0]
 
 {-Need to be checked-}
+{-
+In order to make a State an instance of Ord typeclass, 
+one way is to manually initialize it.  
+
+We provide an implementation for two function of that typeclass.
+
+-}
+
 instance Ord State where
     (Pair _ _) < (Triple _ _ _) = False
     (Pair _ g1) < (Pair _ g2) = g2 < g1 
@@ -128,6 +181,9 @@ instance Ord State where
     (Pair _ g1) <= (Pair _ g2) = g2 <= g1
     (Triple _ _ g1) <= (Triple _ _ g2) = g2 <= g1
 
+{-
+-- Let's check that...
+-}
 productive :: State -> Test -> Bool
 productive s t = s > (head $ sort $ outcomes s t)
 
@@ -135,14 +191,25 @@ productive s t = s > (head $ sort $ outcomes s t)
 but one of these is unproductive, 
 so tests returns only 4 productive weightings-}
 
+
+{-
+This function takes state and 
+returns set of the productive tests.
+
+-}
 tests :: State -> [Test]
 tests s = filter (productive s) (weighings s)
 
 {--4. Decision Tree-}
 
+{- Algebraic datatype that represent n-ary tree -}
 data Tree = Stop State | Node Test [Tree]
     deriving (Show)
 
+{- Predicate that for State determines whether
+ it's a final state or not. Please see page (XX) for full comment.
+
+ -}
 final :: State -> Bool
 final (Pair u g)
     | u == 0 = True
@@ -160,10 +227,15 @@ testTree :: Tree
 testTree = (Node (TPair (6,0) (6,0)) [Node (TPair (3,0) (3,0)) [], Node (TTrip (1,0,0) (1,0,0)) [], Node (TTrip (1,0,0) (1,0,0)) []])
 
 nestedTree :: Tree
-nestedTree = (Node (TPair (6,0) (6,0)) 
-    [Node (TPair (3,0) (3,0)) [testTree], Node (TTrip (1,0,0) (1,0,0)) [testTree], Node (TTrip (1,0,0) (1,0,0)) [testTree]])
+nestedTree = (
+    Node (TPair (6,0) (6,0)) 
+    [Node (TPair (3,0) (3,0)) [testTree, testTree], 
+    Node (TTrip (1,0,0) (1,0,0)) [],
+    Node (TTrip (1,0,0) (1,0,0)) []])
 
 {-use maximum, and foldable, needs optimisation and generalization-}
+
+{-This function calculates height of the tree. -}
 
 height :: Tree -> Int
 height (Stop s) = 0
@@ -179,6 +251,7 @@ height (Node _ (x:y:z:xs)) = (+) 1 $ max (height z) $ max (height x) (height y)
 --     t < t' = height t < height t'
 --     t <= t' = height t <= height t'
 {--def need optimisation, use foldl ?-}
+
 minHeight :: [Tree] -> Tree
 minHeight xs = snd $ head $ sortBy (compare `on` (\(y,_) -> y)) $ map (\x -> (height x, x)) xs
 
