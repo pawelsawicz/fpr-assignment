@@ -108,12 +108,13 @@ variables in the scope of ...
 outcomes :: State -> Test -> [State]
 outcomes (Pair u g) (TPair (a, b) (c, d))
     | valid (Pair u g) (TPair (a, b) (c, d)) == True = 
-        [Pair gcc gc] ++
+        [Pair un gc] ++
         [Triple l h gcc] ++
         [Triple l h gcc]        
     | otherwise = []
         where
-           gcc = u - (a + c)  
+           un =  (u - (a + c))
+           gcc = (u - (a + c)) + g
            gc  = g + a + c
            l   = a
            h   = c
@@ -185,7 +186,7 @@ instance Ord State where
 -- Let's check that...
 -}
 productive :: State -> Test -> Bool
-productive s t = s > (head $ sort $ outcomes s t)
+productive s t = all (s > ) (outcomes s t)
 
 {-For example state Triple 3 0 6 admits 5 weightings, 
 but one of these is unproductive, 
@@ -198,7 +199,7 @@ returns set of the productive tests.
 
 -}
 tests :: State -> [Test]
-tests s = filter (productive s) (weighings s)
+tests s = filter (productive s) $ weighings s
 
 {--4. Decision Tree-}
 
@@ -224,25 +225,22 @@ Example data : height (Node (TPair (3,0) (3,0)) [(Stop (Pair 6 6))])
 -}
 
 testTree :: Tree
-testTree = (Node (TPair (6,0) (6,0)) [Node (TPair (3,0) (3,0)) [], Node (TTrip (1,0,0) (1,0,0)) [], Node (TTrip (1,0,0) (1,0,0)) []])
+testTree = (Node (TPair (6,0) (6,0)) [Node (TPair (3,0) (3,0)) [Stop (Pair 6 6), Stop (Pair 6 6), Stop (Pair 6 6)],
+             Node (TTrip (1,0,0) (1,0,0)) [Stop (Pair 6 6), Stop (Pair 6 6), Stop (Pair 6 6)],
+             Node (TTrip (1,0,0) (1,0,0)) [Stop (Pair 6 6), Stop (Pair 6 6), Stop (Pair 6 6)]])
 
 nestedTree :: Tree
 nestedTree = (
     Node (TPair (6,0) (6,0)) 
-    [Node (TPair (3,0) (3,0)) [testTree, testTree], 
-    Node (TTrip (1,0,0) (1,0,0)) [],
-    Node (TTrip (1,0,0) (1,0,0)) []])
+    [Node (TPair (3,0) (3,0)) [testTree, testTree, testTree], 
+    Node (TTrip (1,0,0) (1,0,0)) [testTree, testTree, testTree],
+    Node (TTrip (1,0,0) (1,0,0)) [testTree, testTree, testTree]])
 
-{-use maximum, and foldable, needs optimisation and generalization-}
-
+{-use maximum, and foldable, needs optimisation and generalization, use composition-}
 {-This function calculates height of the tree. -}
-
 height :: Tree -> Int
 height (Stop s) = 0
-height (Node _ []) = 0 
-height (Node _ (x:xs)) = 1 + height x
-height (Node _ (x:y:xs)) = 1 + max (height x) (height y)
-height (Node _ (x:y:z:xs)) = (+) 1 $ max (height z) $ max (height x) (height y)
+height (Node _ (x:y:z:_)) = 1 + max (max (height x) (height y)) (height z)
 
 {-Check if I could instance Ord typeclass for Tree,
  such that t < t' iff height t < height t' -}
@@ -252,18 +250,33 @@ height (Node _ (x:y:z:xs)) = (+) 1 $ max (height z) $ max (height x) (height y)
 --     t <= t' = height t <= height t'
 {--def need optimisation, use foldl ?-}
 
+-- check that
 minHeight :: [Tree] -> Tree
-minHeight xs = snd $ head $ sortBy (compare `on` (\(y,_) -> y)) $ map (\x -> (height x, x)) xs
+minHeight [] = error "Tree cannot be empty" 
+minHeight xs = snd 
+    $ head 
+    $ sortBy (compare `on` (\(y,_) -> y)) 
+    $ map (\x -> (height x, x)) xs
 
 {-intermediate setps-}
 -- minHeight' :: [Tree] -> [(Int, Tree)]
 -- minHeight' xs = sortBy (compare `on` (\(y,_) -> y)) $ map (\x -> (height x, x)) xs
 
+-- check that
 mktree :: State -> Tree
 mktree s
     | (final s) == True = Stop s
-    | otherwise = minHeight $ map (\(t, ss) -> (Node t [])) $ map ((\t -> (t, outcomes s))) $ tests s
-
+    | otherwise = minHeight 
+        $ map (\t -> (Node t (map mktree (outcomes s t))))
+        $ tests s
+        --where
+        --    productiveTests = head $ tests s             
+{-
+minHeight 
+        $ map (\(t, ss) -> (Node t [])) 
+        $ map ((\t -> (t, outcomes s))) $ tests s
+-}
+-- makeTree = (NodeH 0 optimalTest (map mktreeG (outcomes s optimalTest)))
 --lazy eval on Test->State
 
 mktree' :: State -> [Tree]
