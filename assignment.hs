@@ -71,7 +71,7 @@ valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) =
     (a+b+c) == (d+e+f) &&
     (a+d) <= l &&
     (b+e) <= h &&
-    (c+f) <= f  
+    (c+f) <= g  
 
 {-Test data:
     As stated in instruction (page 2). TPair can be only conducted in a Pair state, and
@@ -111,7 +111,7 @@ outcomes (Pair u g) (TPair (a, b) (c, d))
         [Pair un gc] ++
         [Triple l h gcc] ++
         [Triple l h gcc]        
-    | otherwise = []
+    | otherwise = error ("Invalid state or test" ++ (show (Pair u g)))
         where
            un =  (u - (a + c))
            gcc = (u - (a + c)) + g
@@ -120,10 +120,12 @@ outcomes (Pair u g) (TPair (a, b) (c, d))
            h   = c
 outcomes (Triple l h g) (TTrip (a, b, c) (d, e, f))
     | valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) == True = 
-        [Triple (a+b) (d+e) (g+(l-(a+b))+(h-(d+e)))] ++ -- 1 1 10
-        [Triple (a+b) (d+e) (g+(l-(a+b))+(h-(d+e)))] ++ -- 1 1 10
-        [Triple (l-(a+b)) (h-(d+e)) (g+a+b+d+e)] -- 2 2 8
-    | otherwise = []
+        [Triple (a+d) (b+e) (g+(l-(a+d))+(h-(b+e)))] ++ -- 1 1 10
+        [Triple (a+d) (b+e) (g+(l-(a+d))+(h-(b+e)))] ++ -- 1 1 10
+        [Triple (l-(a+d)) (h-(b+e)) (g+a+b+d+e)] -- 2 2 8
+    | otherwise = error ("Invalid state or test:" ++ " "
+        ++ (show (Triple l h g)) ++ " "
+        ++ (show (TTrip (a, b, c) (d, e, f))))
 
 {-
 expected:
@@ -240,7 +242,8 @@ nestedTree = (
 {-This function calculates height of the tree. -}
 height :: Tree -> Int
 height (Stop s) = 0
-height (Node _ (x:y:z:_)) = 1 + max (max (height x) (height y)) (height z)
+height (Node _ xs) = 1 + maximum (map height xs)
+
 
 {-Check if I could instance Ord typeclass for Tree,
  such that t < t' iff height t < height t' -}
@@ -267,10 +270,20 @@ mktree :: State -> Tree
 mktree s
     | (final s) == True = Stop s
     | otherwise = minHeight 
-        $ map (\t -> (Node t (map mktree (outcomes s t))))
-        $ tests s
-        --where
-        --    productiveTests = head $ tests s             
+        $ map subTree
+        $ productiveTests
+        where
+            productiveTests = if (tests s) == [] 
+                                then error ("Wrong state" ++ (show s))
+                                else (tests s)
+            subTree = (\t -> (Node t (map mktree (getOutcomes s t))))
+            getOutcomes = (\s t -> if any (negState) (outcomes s t)
+                             then error ("Wrong state: " ++ show s ++ " " ++show t)
+                             else (outcomes s t))
+
+negState :: State -> Bool
+negState (Pair x y) = x < 0 || y <0
+negState (Triple x y z) = x < 0 || y < 0 || z < 0
 {-
 minHeight 
         $ map (\(t, ss) -> (Node t [])) 
