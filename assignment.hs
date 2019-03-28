@@ -284,22 +284,15 @@ mktree s
 negState :: State -> Bool
 negState (Pair x y) = x < 0 || y <0
 negState (Triple x y z) = x < 0 || y < 0 || z < 0
-{-
-minHeight 
-        $ map (\(t, ss) -> (Node t [])) 
-        $ map ((\t -> (t, outcomes s))) $ tests s
--}
--- makeTree = (NodeH 0 optimalTest (map mktreeG (outcomes s optimalTest)))
---lazy eval on Test->State
 
-mktree' :: State -> [Tree]
-mktree' s
-    | (final s) == True = [Stop s]
-    | otherwise = makeTree $ productiveOutcomes $ productiveTests
-        where
-            productiveTests = tests s
-            productiveOutcomes = map ((\t -> (t, outcomes s t)))
-            makeTree = map (\(t, xs) -> (Node t (concat $ map mktree' xs))) {-- check that!!!-}
+-- mktree' :: State -> [Tree]
+-- mktree' s
+--     | (final s) == True = [Stop s]
+--     | otherwise = makeTree $ productiveOutcomes $ productiveTests
+--         where
+--             productiveTests = tests s
+--             productiveOutcomes = map ((\t -> (t, outcomes s t)))
+--             makeTree = map (\(t, xs) -> (Node t (concat $ map mktree' xs))) {-- check that!!!-}
 
 {-5 Caching heights-}
 
@@ -313,17 +306,14 @@ heightH (NodeH h t ts) = h
 {- Convert labelled TreeH back to the corresponding Tree -}
 treeH2tree :: TreeH -> Tree
 treeH2tree (StopH s) = (Stop s)
-treeH2tree (NodeH h t []) = (Node t [])
-treeH2tree (NodeH h t [th]) = (Node t [treeH2tree th]) -- dont need this
 treeH2tree (NodeH h t ths) = (Node t (map treeH2tree ths))
 
---nodeH :: Test -> [TreeH] -> TreeH
+nodeH :: Test -> [TreeH] -> TreeH
+nodeH t ths = NodeH 0 t ths
 
 tree2treeH :: Tree -> TreeH
 tree2treeH (Stop s) = (StopH s)
-tree2treeH (Node t []) = (NodeH 0 t [])
-tree2treeH (Node t [ts]) = (NodeH 0 t [tree2treeH ts])
-tree2treeH (Node t ts) = (NodeH 0 t (map tree2treeH ts))
+tree2treeH (Node t ts) = nodeH t (map tree2treeH ts)
 
 -- mktreeH :: State -> TreeH
 -- mktreeH s
