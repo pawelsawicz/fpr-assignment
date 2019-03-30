@@ -326,8 +326,8 @@ heightH . tree2treeH = height
 mktreeH :: State -> TreeH
 mktreeH s
     | (final s) == True = (StopH s)
-    | otherwise = tree2treeH . minHeight . (map treeH2tree) $ subTree $ productiveTests
-        where
+    | otherwise = head $ sortBy (compare `on` heightH) $ subTree $ productiveTests
+        where            
             productiveTests = tests s            
             subTree = map (\t -> nodeH t (map mktreeH (getOutcomes s t)))
             getOutcomes = (\s t -> (outcomes s t))
@@ -337,16 +337,18 @@ mktreeH s
 {-6. Greedy solution-}
 
 optimal :: State -> Test -> Bool
-optimal (Pair u g) (TPair (a,b) (ab,0)) = (2 * a + b <= p) && (u - 2 * a - b <= q)
-        where
-            p = 3 ^ (t - 1)
-            q = (p - 1) `div` 2
-            t = ceiling (logBase 3 (fromIntegral (2 * u + k)))
-            k = if g == 0 then 2 else 1
-optimal (Triple l h g) (TTrip (a,b,c) (d,e,f)) = (a+e) `max` (b+d) `max` (1-a-d+h-b-e) <= p
-        where
-            p = 3 ^ (t - 1)
-            t = ceiling (logBase 3 (fromIntegral (l+h)))
+optimal (Pair u g) (TPair (a,b) (ab,0)) = 
+        (2 * a + b <= p) && (u - 2 * a - b <= q)
+            where
+                p = 3 ^ (t - 1)
+                q = (p - 1) `div` 2
+                t = ceiling (logBase 3 (fromIntegral (2 * u + k)))
+                k = if g == 0 then 2 else 1
+optimal (Triple l h g) (TTrip (a,b,c) (d,e,f)) = 
+        (a+e) `max` (b+d) `max` (l-a-d+h-b-e) <= p
+            where
+                p = 3 ^ (t - 1)
+                t = ceiling (logBase 3 (fromIntegral (l+h)))
 
 bestTests :: State -> [Test]
 bestTests s = filter (optimal s) (weighings s)
@@ -354,10 +356,11 @@ bestTests s = filter (optimal s) (weighings s)
 mktreeG :: State -> TreeH
 mktreeG s
     | (final s) == True = (StopH s)
-    | otherwise = makeTree -- Node h t [TreeH]
-        where
-            optimalTest = head (bestTests s)
-            makeTree = (NodeH 0 optimalTest (map mktreeG (outcomes s optimalTest)))
+    | otherwise = subTree $ bestTest
+        where            
+            bestTest = head $ if bestTests s == [] then error (show s) else bestTests s            
+            subTree = (\t -> nodeH t (map mktreeG (getOutcomes s t)))
+            getOutcomes = (\s t -> (outcomes s t))
 
 mktreesG :: State -> [TreeH]
 mktreesG s
@@ -365,7 +368,7 @@ mktreesG s
     | otherwise = makeTree
         where
             optimalTests = bestTests s
-            makeTree = map (\t -> (NodeH 0 t (map mktreeG (outcomes s t)))) optimalTests
+            makeTree = map (\t -> map mktreeG (outcomes s t)) $ optimalTests
 
 -- other questions
 -- use modules ??
