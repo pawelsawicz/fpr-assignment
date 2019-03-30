@@ -91,14 +91,14 @@ if there is sufficiently many coins in the variouse piles.
 
 > valid :: State -> Test -> Bool
 > valid (Pair u g) (TPair (a, b) (c ,d)) =
->    (a+b) == (c+d) &&
->    (a+c) <= u && 
->    (a+b+c+d) <= (u+g)
+>     (a+b) == (c+d) &&
+>     (a+c) <= u && 
+>     (a+b+c+d) <= (u+g)
 > valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) = 
->    (a+b+c) == (d+e+f) &&
->    (a+d) <= l &&
->    (b+e) <= h &&
->    (c+f) <= f  
+>     (a+b+c) == (d+e+f) &&
+>     (a+d) <= l &&
+>     (b+e) <= h &&
+>     (c+f) <= g 
 
 
 \newpage
@@ -109,6 +109,30 @@ Choosing and conducting a test
 OUTCOMES TBD
 --
 
+> outcomes :: State -> Test -> [State]
+> outcomes (Pair u g) (TPair (a, b) (c, d))
+>     | valid (Pair u g) (TPair (a, b) (c, d)) == True = 
+>         [Pair un gc] ++
+>         [Triple l h gcc] ++
+>         [Triple l h gcc]        
+>     | otherwise = error ("Invalid state or test" ++ (show (Pair u g)))
+>         where
+>            un =  (u - (a + c))
+>            gcc = (u - (a + c)) + g
+>            gc  = g + a + c
+>            l   = a
+>            h   = c
+> outcomes (Triple l h g) (TTrip (a, b, c) (d, e, f))
+>     | valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) == True = 
+>         [Triple (a+d) (b+e) (g+(l-(a+d))+(h-(b+e)))] ++ -- 1 1 10
+>         [Triple (a+d) (b+e) (g+(l-(a+d))+(h-(b+e)))] ++ -- 1 1 10
+>         [Triple (l-(a+d)) (h-(b+e)) (g+a+b+d+e)] -- 2 2 8
+>     | otherwise = error ("Invalid state or test:" ++ " "
+>         ++ (show (Triple l h g)) ++ " "
+>         ++ (show (TTrip (a, b, c) (d, e, f))))
+
+Weighings
+--
 Weighings function has diffrent implementation for each of State.
 
 
@@ -146,6 +170,9 @@ Test function uses two other functions. `weighings`, `productive` and `filter`.
 First two are defined by us. Filter is part of lib. 
 Which filters out an collection by provided predicate
 
+> productive :: State -> Test -> Bool
+> productive s t = all (s > ) (outcomes s t)
+
 > tests :: State -> [Test]
 > tests s = filter (productive s) (weighings s)
 
@@ -168,10 +195,25 @@ Decision tree
 
 > height :: Tree -> Int
 > height (Stop s) = 0
-> height (Node _ []) = 0 
-> height (Node _ (x:xs)) = 1 + height x
-> height (Node _ (x:y:xs)) = 1 + max (height x) (height y)
-> height (Node _ (x:y:z:xs)) = (+) 1 $ max (height z) $ max (height x) (height y)
+> height (Node _ xs) = 1 + maximum (map height xs)
+
+> minHeight :: [Tree] -> Tree
+> minHeight [] = error "Tree cannot be empty" 
+> minHeight xs = snd 
+>     $ head 
+>     $ sortBy (compare `on` (\(y,_) -> y)) 
+>     $ map (\x -> (height x, x)) xs
+
+> mktree :: State -> Tree
+> mktree s
+>     | (final s) == True = Stop s
+>     | otherwise = minHeight 
+>         $ map subTree
+>         $ productiveTests
+>         where
+>             productiveTests = tests s
+>             subTree = (\t -> (Node t (map mktree (getOutcomes s t))))
+>             getOutcomes = (\s t -> (outcomes s t))
 
 \newpage
 
@@ -184,6 +226,17 @@ Caching heights
 > heightH :: TreeH -> Int
 > heightH (StopH s) = 0
 > heightH (NodeH h t ts) = h
+
+> treeH2tree :: TreeH -> Tree
+> treeH2tree (StopH s) = (Stop s)
+> treeH2tree (NodeH h t ths) = (Node t (map treeH2tree ths))
+
+> nodeH :: Test -> [TreeH] -> TreeH
+> nodeH t ths = NodeH 0 t ths
+
+> tree2treeH :: Tree -> TreeH
+> tree2treeH (Stop s) = (StopH s)
+> tree2treeH (Node t ts) = nodeH t (map tree2treeH ts)
 
 Greedy solution
 ==

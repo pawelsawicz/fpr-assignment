@@ -273,13 +273,16 @@ mktree s
         $ map subTree
         $ productiveTests
         where
-            productiveTests = if (tests s) == [] 
-                                then error ("Wrong state" ++ (show s))
-                                else (tests s)
+            productiveTests = tests s
             subTree = (\t -> (Node t (map mktree (getOutcomes s t))))
-            getOutcomes = (\s t -> if any (negState) (outcomes s t)
-                             then error ("Wrong state: " ++ show s ++ " " ++show t)
-                             else (outcomes s t))
+            getOutcomes = (\s t -> (outcomes s t))
+
+--productiveTests = if (tests s) == [] 
+--    then error ("Wrong state" ++ (show s))
+--    else (tests s)
+--getOutcomes = (\s t -> if any (negState) (outcomes s t)
+--   then error ("Wrong state: " ++ show s ++ " " ++show t)
+--   else (outcomes s t))
 
 negState :: State -> Bool
 negState (Pair x y) = x < 0 || y <0
@@ -309,20 +312,25 @@ treeH2tree (StopH s) = (Stop s)
 treeH2tree (NodeH h t ths) = (Node t (map treeH2tree ths))
 
 nodeH :: Test -> [TreeH] -> TreeH
-nodeH t ths = NodeH 0 t ths
+nodeH t ths = NodeH ((+) 1 $ maximum $ map heightH ths) t ths
 
 tree2treeH :: Tree -> TreeH
 tree2treeH (Stop s) = (StopH s)
 tree2treeH (Node t ts) = nodeH t (map tree2treeH ts)
 
--- mktreeH :: State -> TreeH
--- mktreeH s
---     | (final s) == True = (StopH s)
---     | otherwise = makeTree $ productiveOutcomes $ productiveTests
---         where
---             productiveTests = tests s
---             productiveOutcomes = map ((\t -> (t, outcomes s t)))
---             makeTree = map (\(t, xs) -> (NodeH 0 t (concat $ map mktree' xs))) {-- check that!!!-}
+{-
+Mention about prove by induction, or just use law of compositionality
+heightH . tree2treeH = height
+-}
+
+mktreeH :: State -> TreeH
+mktreeH s
+    | (final s) == True = (StopH s)
+    | otherwise = tree2treeH . minHeight . (map treeH2tree) $ subTree $ productiveTests
+        where
+            productiveTests = tests s            
+            subTree = map (\t -> nodeH t (map mktreeH (getOutcomes s t)))
+            getOutcomes = (\s t -> (outcomes s t))
 
 {-use :set +s to check eval time-}
 
