@@ -365,15 +365,7 @@ mktreeG s
 mktreesG :: State -> [TreeH]
 mktreesG s
     | (final s) == True = [StopH s]
-    | otherwise = makeTree
+    | otherwise = concat $ makeTree
         where
             optimalTests = bestTests s
             makeTree = map (\t -> map mktreeG (outcomes s t)) $ optimalTests
-
--- other questions
--- use modules ??
-
-{-more generalized form of solution, functor -}
-
--- data TreeFunc a = StopF State | NodeF a [TreeFunc a]
---     deriving (Show, Functor)
