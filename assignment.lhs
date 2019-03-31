@@ -27,6 +27,8 @@ as there is not point to repeat myself.
 
 I am aware of the `module` concept in Haskell, in the case of this submission I did not use it.
 
+It should be noted here that puzzle related explanation uses content of assignemnt text.
+
 Importing liblaries
 --
 
@@ -120,14 +122,12 @@ We denoted following predicates :
 Choosing and conducting a test
 =
 
-Outcome function 
+Constructing outcomes 
 --
 
 We define function outcomes such that for state `s` and test `t` that `valid s t = True`, works out the possible outomes.
 
-As this is a partial function, if `valid s t` = False then return an error otherwise proceed with generation of outcomes.
-
-This function returns three 
+This is a partial function, if `valid s t` = False then return an error otherwise proceed with generation of outcomes.
 
 > outcomes :: State -> Test -> [State]
 > outcomes (Pair u g) (TPair (a, b) (c, d))
@@ -144,9 +144,9 @@ This function returns three
 >            h   = c
 > outcomes (Triple l h g) (TTrip (a, b, c) (d, e, f))
 >     | valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) == True = 
->         [Triple (a+d) (b+e) (g+(l-(a+d))+(h-(b+e)))] ++ -- 1 1 10
->         [Triple (a+d) (b+e) (g+(l-(a+d))+(h-(b+e)))] ++ -- 1 1 10
->         [Triple (l-(a+d)) (h-(b+e)) (g+a+b+d+e)] -- 2 2 8
+>         [Triple (a+d) (b+e) (g+(l-(a+d))+(h-(b+e)))] ++
+>         [Triple (a+d) (b+e) (g+(l-(a+d))+(h-(b+e)))] ++
+>         [Triple (l-(a+d)) (h-(b+e)) (g+a+b+d+e)]
 >     | otherwise = error ("Invalid state or test:" ++ " "
 >         ++ (show (Triple l h g)) ++ " "
 >         ++ (show (TTrip (a, b, c) (d, e, f))))
@@ -154,19 +154,24 @@ This function returns three
 Weighings
 --
 
-Weighings function has diffrent implementation for each of the `State` constructor. 
 We uses set comprehension in order to generate valid weighings. 
 As you can notice there are few predicates to generate sensible tests.
 
-such that :
+Predicates for `Pair`:
 
-* `a+b+c = d+e+f` - same number of coins per pan
-* `a+b+c > 0`
-* `c x f = 0`
-* `a + b <= l`
-* `b + e <= h`
-* `c + f <= g`
-* `(a,b,c) <= (d,e,f)`
+1. `a + b > 0`
+2. `2*a+b <= u`
+3. `b <=g`
+
+Predicates for `Triple`:
+
+1. `a+b+c = d+e+f` - same number of coins per pan
+2. `a+b+c > 0` - no point in weighting only air
+3. `c x f = 0` - don't put genuine coins in boh pans
+4. `a + b <= l` - enough light coins
+5. `b + e <= h` - enough heavy coins
+6. `c + f <= g` - enough genuine coins 
+7. `(a,b,c) <= (d,e,f)` - symmetry breaker
 
 > weighings :: State -> [Test]
 > weighings (Pair u g) = [TPair (a,b) (a+b, 0) | a<-[0..u], b<-[0..g],
@@ -187,14 +192,20 @@ Choices function uses set comprehension with predicates to generate valid select
 >                       (k-i-j) <= g,
 >                       (k-i-j) >= 0]
 
-Below code, is a case of manually set up an instance of type class. Typeclass `Ord` has two functions.
-This is special purpose ordering on `State`, which we use to determine whether state gives strictly
- more information about the coins. s < s' 
+Instance of typeclass
+--
 
-* ``
-* ``
+Previously I mentioned about `deriving` keyword that informs compiler that this datatype has some behaviour.
+`deriving` keyword works in most of the cases, but if you need custom implementation of functions that are part of typeclass,
+then you need to manually set up an instance of typeclass.
 
-We need to implement those functions for type that derived `Ord` typeclass.
+Typeclass `Ord` has two functions.
+
+1. (<) :: a -> a -> Bool 
+2. (<=) :: a -> a -> Bool 
+
+In order to check if `State` is making a progress, we modell this in therm of special purpose ordering, which we use to determine whether state gives strictly
+ more information about the coins.
 
 > instance Ord State where
 >     (Pair _ _) < (Triple _ _ _) = False
@@ -205,14 +216,19 @@ We need to implement those functions for type that derived `Ord` typeclass.
 >     (Pair _ g1) <= (Pair _ g2) = g2 <= g1
 >     (Triple _ _ g1) <= (Triple _ _ g2) = g2 <= g1
 
-Productive function checks if all outcomes making a progress, by using special purpose ordering on state `s < s'`
+Productive tests
+--
+
+Productive function checks if all outcomes making a progress. 
+I used `all` function that checks if all elements fulfied predicate. 
 
 > productive :: State -> Test -> Bool
 > productive s t = all (s > ) (outcomes s t)
 
-Test function uses two other functions. `weighings`, `productive` and `filter`.
-First two are defined by us. Filter is part of library. 
-Which filters out an collection by provided predicate.
+Test function is composed by three other functions: `weighings`, `productive` and `filter`.
+First two are defined by us. Filter is part of library that we imported. 
+Filter function as name indicates it filters out an collection by provided predicate, 
+and preserving just those elements which follow predicate
 
 > tests :: State -> [Test]
 > tests s = filter (productive s) (weighings s)
@@ -222,14 +238,20 @@ Which filters out an collection by provided predicate.
 Decision tree
 ==
 
-Now we can introduce `Tree` data type that 
-represents weighting process. It's a ternary tree. 
-This datatype has two constructors,
- `Stop` that represents final state as a leafe of the tree.
- `Node that represtens weighting as a node of the tree.
+Now we can introduce `Tree` datatype that represents a weighting process.
+It's a ternary tree that contains itself. We can also say that it's recursive datatype. 
+`Tree` has two data constructors:
+
+1. `Stop` represents final state, it's a leafe of the tree.
+2. `Node represtens weighting, it's a node of the tree.
 
 > data Tree = Stop State | Node Test [Tree]
 >  deriving (Show)
+
+Constructing a tree
+--
+
+Let's now implement some functions that help us to construct a valid weighting process and represent it as Tree.
 
 Final is a predicate that determine whether `State` is final.
 
@@ -242,16 +264,16 @@ Final is a predicate that determine whether `State` is final.
 >     | l == 0 && h == 1 = True
 >     | otherwise = False
 
-height function, case `(Stop s)` simply returns 0. 
-`(Node _ xs)` recursivly calculates height of a tree and then selects maximum value.
+Height function, calculates height of a Tree. For `(Stop s)` simply returns 0. 
+For `(Node _ xs)`, it recursivly calculates height of a tree and then selects maximum value.
 
 > height :: Tree -> Int
 > height (Stop s) = 0
 > height (Node _ xs) = 1 + maximum (map height xs)
 
-minHeight is a partial function that throws an error for empty set.
-Then it calculates height on elements and returns a tuple of Tree and its height.
-Then collection is sorted and selected first element. 
+minHeight is a partial function that throws an error for empty list.
+For non empty list it calculates height of each of the elements, then returns a tuple of Tree and its height.
+At the end collection is sorted by height we select first element. 
 
 > minHeight :: [Tree] -> Tree
 > minHeight [] = error "Tree cannot be empty" 
@@ -260,7 +282,8 @@ Then collection is sorted and selected first element.
 >     $ sortBy (compare `on` (\(y,_) -> y)) 
 >     $ map (\x -> (height x, x)) xs
 
-mktree function generate tree recursivly for each `outcome s t`.
+Finally we can define our function that will construct weighting process as a Tree.
+For all productive tests generates recursivly tree for each of the outcome. 
 
 > mktree :: State -> Tree
 > mktree s
@@ -275,32 +298,42 @@ mktree function generate tree recursivly for each `outcome s t`.
 
 \newpage
 
+Running example for `mktree (Pair 6 0)`, some conclusions ??
+
 Caching heights
 ==
 
+Introducing height
+--
+
 Program in the previouse sections works but it is rather slow. 
 One of the problems is that it is recomputing the heights of trees.
-Now we will try to introduce height on each Node so that we can compute it in constant time.
+Now we will introduce height on each Node so that we can compute it in constant time.
 
 We define new datatype `TreeH`. As you can see it's very simillar to previouse `Tree` with one change. 
-We introduce notion of height in the `NodeH` constructor.
+We introduced notion of height in the `NodeH` constructor.
 
 > data TreeH = StopH State | NodeH Int Test [TreeH]
 >  deriving Show
 
-Function that extracts height out of `TreeH` type.
+Now we need to implement set of new functions that will work on `TreeH` rather than on `Tree`, 
+so that later on we can use it to construct weighting process as `TreeH`
+
+heightH function extracts height out of `TreeH` type.
 
 > heightH :: TreeH -> Int
 > heightH (StopH s) = 0
 > heightH (NodeH h t ts) = h
 
-treeH2tree that will map `TreeH` type to `Tree`. In this case `TreeH` loses direct access to its height.
+treeH2tree function that maps `TreeH` type to `Tree`.
+ After mapping `TreeH` loses direct access to its height.
 
 > treeH2tree :: TreeH -> Tree
 > treeH2tree (StopH s) = (Stop s)
 > treeH2tree (NodeH h t ths) = (Node t (map treeH2tree ths))
 
-nodeH is a function that for given `Test` and list of tries, it will construct new `TreeH`.
+nodeH is a function that for given `Test` and list of tries, 
+it will construct new `TreeH`.
 
 > nodeH :: Test -> [TreeH] -> TreeH
 > nodeH t ths = NodeH ((+) 1 $ maximum $ map heightH ths) t ths
