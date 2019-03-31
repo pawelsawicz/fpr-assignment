@@ -16,45 +16,47 @@ Getting started
 --
 
 This document is an essay for Functional Programming course at Software Engineering Programme.
-I have been given two tasks, solve weighting puzzle, and explain haskell. 
-To separate those two tasks and to improve clarity of this essay 
-I have introduced two sections `Puzzle` and `Haskell`.
+I have been given two tasks, firstly to solve weighting puzzle in Haskell and
+ explain my reasoning and decisions behind the code.
+ 
+At the begining of this essay you might find a lot of explanation about fundamentals of functional programing (FP) theory 
+and Haskell syntax.
 
-Puzzle section in an narrative around a problem and setps that leads to solution.
-Haskell section contains explanation to syntax and functional programming knowledge.
+As we move along you will find less text and more compacted descriptions of my approach, 
+as there is not point to repeat myself.
 
-Haskell
+I am aware of the `module` concept in Haskell, in the case of this submission I did not use it.
+
+Importing liblaries
 --
 
-In order to use some functions, I imported two modules.
-Import keyword imports modules, and makes its content aviable for us. 
+In Haskell by default you are given access to `Prelude` liblary, which contains core functions of the language.
+In order to use functions from other liblaries, you need to use keyword `import`, which imports `module`.
 
-import Data.List
-import Data.Ord
-import Data.Function
+> import Data.List
+> import Data.Ord
+> import Data.Function
 
 State and Test Algebraic datatypes
 ==
 
+What is Algebraic datatype ?
+
+First we shall define two algebraic datatypes, `State` and `Test`.
+
 State
 --
 
-Puzzle
---
+State datatype has two data contructors `Pair` and `Triple`. 
+It should be noted here that everything in Haskell is a function therefore data constructor is also a function.
 
-Intro
-
-Haskell
+Partial application
 --
-First we shall define two algebraic datatypes. `State` and `Test`.
-State datatype has two contructors `Pair` and `Triple`. 
-It should be noted here that everything in Haskell is a function 
-therefore constructor is also a function.
 
 `Pair` constructor is a type of `Int -> Int -> State`. 
-It means that we can looks at this two ways. It takes two arguments and returns `State`, 
-or it takes one argument and returns a function that takes one argument and returns `State`.
-Which is called partial application. 
+It means that we can looks at this in two ways. 
+First, function takes two arguments and returns `State`, or it takes one argument and returns a function that takes one argument 
+and returns `State`. In latter we say that function can be partially applied.
 
 > data State = Pair Int Int | Triple Int Int Int
 >  deriving (Eq, Show)
@@ -62,32 +64,44 @@ Which is called partial application.
 Test
 --
 
-Test data type has two constructors, `TPair` and `TTrip`. `TPair` constructor takes two tuples.
-Tuple represents cartisian product.
-As you can see there are two diffrent ways of representing a arguments. 
-As cartesian product or as a series of functions in the case of `State` constructors.
-
-In haskell we have ability to transpose cartisian product to series 
-of functions by using currying, and vice versa.
+Test datatype has two data constructors, `TPair` and `TTrip`. 
+`TPair` constructor takes two tuples. Tuple represents cartisian product of an arguments.
 
 > data Test = TPair (Int, Int) (Int, Int) | TTrip (Int,Int,Int) (Int,Int,Int)
 >  deriving (Eq, Show)
 
-Another piece that needs an explenation is keyword `deriving`. 
-Keyword deriving allows us to make a instance of type classes (Eq and Show).
+Cartisian product vs series of functions
+--
+As you can see there are two diffrent ways of representing an argument of a function.
+As a cartesian product or as a series of functions.
 
-Otherwise we would need to make manually an instance 
-of desired type class by denoting
+In Haskell we have ability to transpose cartisian product to series 
+of functions by using currying, and vice versa.
+
+deriving keyword
+--
+
+Another piece that needs an explenation is keyword `deriving`. 
+Keyword deriving allows us to make a datatype an instance of typeclass, in the instance of `State`, `Test` it derrives (Eq and Show).
+Compiler automatically finds out default implementation for instance of typeclass. 
+
+Alternatively we can manually make an instance of desired typeclass by denoting
 
 ```haskell
 instance Eq Test where
 ```
 
-By using pattern matching this guards that `TPair` test will be only conducted 
-in a `Pair` state, and a `TTrip` test in a `Triple` state. 
+We shall define valid function such that determine whether a given test is valid in a given state.
+
+By using pattern matching this guards that `TPair` test will be only conducted in a `Pair` state,
+ and a `TTrip` test in a `Triple` state.
+
 In addition to that there are predicates that checks validity of test against state. 
-if the number of coins is the same in each pan of the scale
-if there is sufficiently many coins in the variouse piles.
+
+We denoted following predicates :
+
+1. The number of coins is the same in each pan of the scale
+2. There is sufficiently many coins in the variouse piles for the test
 
 > valid :: State -> Test -> Bool
 > valid (Pair u g) (TPair (a, b) (c ,d)) =
@@ -106,8 +120,14 @@ if there is sufficiently many coins in the variouse piles.
 Choosing and conducting a test
 =
 
-OUTCOMES TBD
+Outcome function 
 --
+
+We define function outcomes such that for state `s` and test `t` that `valid s t = True`, works out the possible outomes.
+
+As this is a partial function, if `valid s t` = False then return an error otherwise proceed with generation of outcomes.
+
+This function returns three 
 
 > outcomes :: State -> Test -> [State]
 > outcomes (Pair u g) (TPair (a, b) (c, d))
@@ -133,8 +153,20 @@ OUTCOMES TBD
 
 Weighings
 --
-Weighings function has diffrent implementation for each of State.
 
+Weighings function has diffrent implementation for each of the `State` constructor. 
+We uses set comprehension in order to generate valid weighings. 
+As you can notice there are few predicates to generate sensible tests.
+
+such that :
+
+* `a+b+c = d+e+f` - same number of coins per pan
+* `a+b+c > 0`
+* `c x f = 0`
+* `a + b <= l`
+* `b + e <= h`
+* `c + f <= g`
+* `(a,b,c) <= (d,e,f)`
 
 > weighings :: State -> [Test]
 > weighings (Pair u g) = [TPair (a,b) (a+b, 0) | a<-[0..u], b<-[0..g],
@@ -148,14 +180,21 @@ Weighings function has diffrent implementation for each of State.
 >         where
 >             k = (l+h+g) `div` 2
 
-Choices function uses set comprehension with predicates
+Choices function uses set comprehension with predicates to generate valid selections of `k` coins.
 
 > choices :: Int -> (Int, Int, Int) -> [(Int, Int, Int)]
 > choices k (l, h, g) = [(i,j,k-i-j)| i<-[0..l], j<-[0..h],
 >                       (k-i-j) <= g,
 >                       (k-i-j) >= 0]
 
-This is a case of manually set up an instance of type class.
+Below code, is a case of manually set up an instance of type class. Typeclass `Ord` has two functions.
+This is special purpose ordering on `State`, which we use to determine whether state gives strictly
+ more information about the coins. s < s' 
+
+* ``
+* ``
+
+We need to implement those functions for type that derived `Ord` typeclass.
 
 > instance Ord State where
 >     (Pair _ _) < (Triple _ _ _) = False
@@ -166,12 +205,14 @@ This is a case of manually set up an instance of type class.
 >     (Pair _ g1) <= (Pair _ g2) = g2 <= g1
 >     (Triple _ _ g1) <= (Triple _ _ g2) = g2 <= g1
 
-Test function uses two other functions. `weighings`, `productive` and `filter`.
-First two are defined by us. Filter is part of lib. 
-Which filters out an collection by provided predicate
+Productive function checks if all outcomes making a progress, by using special purpose ordering on state `s < s'`
 
 > productive :: State -> Test -> Bool
 > productive s t = all (s > ) (outcomes s t)
+
+Test function uses two other functions. `weighings`, `productive` and `filter`.
+First two are defined by us. Filter is part of library. 
+Which filters out an collection by provided predicate.
 
 > tests :: State -> [Test]
 > tests s = filter (productive s) (weighings s)
@@ -183,15 +224,14 @@ Decision tree
 
 Now we can introduce `Tree` data type that 
 represents weighting process. It's a ternary tree. 
-This data type has two constructors,
+This datatype has two constructors,
  `Stop` that represents final state as a leafe of the tree.
  `Node that represtens weighting as a node of the tree.
 
 > data Tree = Stop State | Node Test [Tree]
 >  deriving (Show)
 
-Final is a predicate that determine whether 
-State is final.
+Final is a predicate that determine whether `State` is final.
 
 > final :: State -> Bool
 > final (Pair u g)
@@ -202,14 +242,14 @@ State is final.
 >     | l == 0 && h == 1 = True
 >     | otherwise = False
 
-In height function, case for `(Stop s)` is not really interesing.
-But `(Node _ xs)` recursivly calculates height of a tree and then selects maximum value.
+height function, case `(Stop s)` simply returns 0. 
+`(Node _ xs)` recursivly calculates height of a tree and then selects maximum value.
 
 > height :: Tree -> Int
 > height (Stop s) = 0
 > height (Node _ xs) = 1 + maximum (map height xs)
 
-minHeight is a partial function that throws an error in case of empty collection.
+minHeight is a partial function that throws an error for empty set.
 Then it calculates height on elements and returns a tuple of Tree and its height.
 Then collection is sorted and selected first element. 
 
@@ -341,3 +381,18 @@ Function that builds tries based on all optimal tests
 Conclusion
 ==
 
+Haskell is a perfect tool for mathematical puzzles. 
+Code is much more compacted in compare with more popular languages like (C, C#, Java). 
+That is because Haskell by default support features that other languages do not, like :
+
+1. tail-recursion
+2. lazy evaluation
+3. high-orderism
+
+This puzzle merly shows us power of functional paradigm and Haskell. 
+There is whole separate field of study that concerns about patterns of behaviour in abstractions (Category Theory).
+
+What to improve, ideas ?
+--
+
+Error handling patter, by using Either bifunctor. pattern
