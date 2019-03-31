@@ -65,8 +65,8 @@ In this function, Ive used patter matching.
 valid :: State -> Test -> Bool
 valid (Pair u g) (TPair (a, b) (c ,d)) =
     (a+b) == (c+d) &&
-    (a+c) <= u && 
-    (a+b+c+d) <= (u+g)
+    (a+c) <= u &&
+    (b+d) <= g
 valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) = 
     (a+b+c) == (d+e+f) &&
     (a+d) <= l &&
@@ -111,7 +111,7 @@ outcomes (Pair u g) (TPair (a, b) (c, d))
         [Pair un gc] ++
         [Triple l h gcc] ++
         [Triple l h gcc]        
-    | otherwise = error ("Invalid state or test" ++ (show (Pair u g)))
+    | otherwise = error ("Invalid state or test")
         where
            un =  (u - (a + c))
            gcc = (u - (a + c)) + g
@@ -120,12 +120,17 @@ outcomes (Pair u g) (TPair (a, b) (c, d))
            h   = c
 outcomes (Triple l h g) (TTrip (a, b, c) (d, e, f))
     | valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) == True = 
-        [Triple (a+d) (b+e) (g+(l-(a+d))+(h-(b+e)))] ++ -- 1 1 10
-        [Triple (a+d) (b+e) (g+(l-(a+d))+(h-(b+e)))] ++ -- 1 1 10
-        [Triple (l-(a+d)) (h-(b+e)) (g+a+b+d+e)] -- 2 2 8
-    | otherwise = error ("Invalid state or test:" ++ " "
-        ++ (show (Triple l h g)) ++ " "
-        ++ (show (TTrip (a, b, c) (d, e, f))))
+        [Triple lnew hnew gnew] ++
+        [Triple lnew hnew gnew] ++
+        [Triple lnew' hnew' gnew']            
+    | otherwise = error ("Invalid state or test")
+            where
+                lnew = a+d
+                lnew' = l-lnew
+                hnew = b+e
+                hnew' = h-hnew
+                gnew = g+lnew'+hnew'
+                gnew' = g+a+b+d+e
 
 {-
 expected:
@@ -151,10 +156,13 @@ weighings (Pair u g) = [TPair (a,b) (a+b, 0) | a<-[0..u], b<-[0..g],
 weighings (Triple l h g) = [TTrip (a, b, c) (d, e, f)| k1<-[1..k],
      (a, b, c) <- choices k1 (l, h, g),
      (d, e, f) <- choices k1 (l, h, g),
-      c == 0 || f == 0, (a,b,c) <= (d,e,f), (c+f) <= g, (b+e) <= h, (a+d) <= l, (a+b+c) == (d+e+f), (a+b+c) > 0]
+     c == 0 || f == 0,
+     (a,b,c) <= (d,e,f),
+     (c+f) <= g, (b+e) <= h, (a+d) <= l,
+     (a+b+c) == (d+e+f),
+     (a+b+c) > 0]
         where
             k = (l+h+g) `div` 2
-
 {-
 expected:
 - choices 3 (2,2,2) = 
@@ -165,15 +173,6 @@ For given imput returns set of possible
 -}
 choices :: Int -> (Int, Int, Int) -> [(Int, Int, Int)]
 choices k (l, h, g) = [(i,j,k-i-j)| i<-[0..l], j<-[0..h], (k-i-j) <= g, (k-i-j) >= 0]
-
-{-Need to be checked-}
-{-
-In order to make a State an instance of Ord typeclass, 
-one way is to manually initialize it.  
-
-We provide an implementation for two function of that typeclass.
-
--}
 
 instance Ord State where
     (Pair _ _) < (Triple _ _ _) = False
@@ -190,18 +189,8 @@ instance Ord State where
 productive :: State -> Test -> Bool
 productive s t = all (s > ) (outcomes s t)
 
-{-For example state Triple 3 0 6 admits 5 weightings, 
-but one of these is unproductive, 
-so tests returns only 4 productive weightings-}
-
-
-{-
-This function takes state and 
-returns set of the productive tests.
-
--}
 tests :: State -> [Test]
-tests s = filter (productive s) $ weighings s
+tests s = filter (productive s) (weighings s)
 
 {--4. Decision Tree-}
 
@@ -226,20 +215,21 @@ final (Triple l h g)
 Example data : height (Node (TPair (3,0) (3,0)) [(Stop (Pair 6 6))])
 -}
 
-testTree :: Tree
-testTree = (Node (TPair (6,0) (6,0)) [Node (TPair (3,0) (3,0)) [Stop (Pair 6 6), Stop (Pair 6 6), Stop (Pair 6 6)],
-             Node (TTrip (1,0,0) (1,0,0)) [Stop (Pair 6 6), Stop (Pair 6 6), Stop (Pair 6 6)],
-             Node (TTrip (1,0,0) (1,0,0)) [Stop (Pair 6 6), Stop (Pair 6 6), Stop (Pair 6 6)]])
+-- testTree :: Tree
+-- testTree = (Node (TPair (6,0) (6,0)) [Node (TPair (3,0) (3,0)) [Stop (Pair 6 6), Stop (Pair 6 6), Stop (Pair 6 6)],
+--              Node (TTrip (1,0,0) (1,0,0)) [Stop (Pair 6 6), Stop (Pair 6 6), Stop (Pair 6 6)],
+--              Node (TTrip (1,0,0) (1,0,0)) [Stop (Pair 6 6), Stop (Pair 6 6), Stop (Pair 6 6)]])
 
-nestedTree :: Tree
-nestedTree = (
-    Node (TPair (6,0) (6,0)) 
-    [Node (TPair (3,0) (3,0)) [testTree, testTree, testTree], 
-    Node (TTrip (1,0,0) (1,0,0)) [testTree, testTree, testTree],
-    Node (TTrip (1,0,0) (1,0,0)) [testTree, testTree, testTree]])
+-- nestedTree :: Tree
+-- nestedTree = (
+--     Node (TPair (6,0) (6,0)) 
+--     [Node (TPair (3,0) (3,0)) [testTree, testTree, testTree], 
+--     Node (TTrip (1,0,0) (1,0,0)) [testTree, testTree, testTree],
+--     Node (TTrip (1,0,0) (1,0,0)) [testTree, testTree, testTree]])
 
 {-use maximum, and foldable, needs optimisation and generalization, use composition-}
 {-This function calculates height of the tree. -}
+
 height :: Tree -> Int
 height (Stop s) = 0
 height (Node _ xs) = 1 + maximum (map height xs)
@@ -256,37 +246,15 @@ height (Node _ xs) = 1 + maximum (map height xs)
 -- check that
 minHeight :: [Tree] -> Tree
 minHeight [] = error "Tree cannot be empty" 
-minHeight xs = snd 
-    $ head 
-    $ sortBy (compare `on` (\(y,_) -> y)) 
-    $ map (\x -> (height x, x)) xs
-
-{-intermediate setps-}
--- minHeight' :: [Tree] -> [(Int, Tree)]
--- minHeight' xs = sortBy (compare `on` (\(y,_) -> y)) $ map (\x -> (height x, x)) xs
+minHeight xs = head $ sortBy (compare `on` (\x -> (height x))) xs
 
 -- check that
 mktree :: State -> Tree
 mktree s
     | (final s) == True = Stop s
-    | otherwise = minHeight 
-        $ map subTree
-        $ productiveTests
+    | otherwise = minHeight $ map subTree (tests s)
         where
-            productiveTests = tests s
-            subTree = (\t -> (Node t (map mktree (getOutcomes s t))))
-            getOutcomes = (\s t -> (outcomes s t))
-
---productiveTests = if (tests s) == [] 
---    then error ("Wrong state" ++ (show s))
---    else (tests s)
---getOutcomes = (\s t -> if any (negState) (outcomes s t)
---   then error ("Wrong state: " ++ show s ++ " " ++show t)
---   else (outcomes s t))
-
-negState :: State -> Bool
-negState (Pair x y) = x < 0 || y <0
-negState (Triple x y z) = x < 0 || y < 0 || z < 0
+            subTree = (\t -> (Node t (map mktree (outcomes s t))))
 
 -- mktree' :: State -> [Tree]
 -- mktree' s
