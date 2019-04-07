@@ -1,12 +1,9 @@
-{-# LANGUAGE DeriveFunctor, DeriveFoldable #-}
-
 import Data.List
 import Data.Ord
 import Data.Function
 
 data State = Pair Int Int | Triple Int Int Int
     deriving (Eq, Show)
-
 
 data Test = TPair (Int, Int) (Int, Int) | TTrip (Int,Int,Int) (Int,Int,Int)
     deriving (Eq, Show)
@@ -24,30 +21,30 @@ valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) =
 
 outcomes :: State -> Test -> [State]
 outcomes (Pair u g) (TPair (a, b) (c, d))
-    | valid (Pair u g) (TPair (a, b) (c, d)) == True = 
+    | valid (Pair u g) (TPair (a, b) (c, d)) = 
         [Pair unew gnew'] ++
         [Triple l h gnew] ++
         [Triple l h gnew]        
-    | otherwise = error ("Invalid state or test")
+    | otherwise = error "Invalid state or test"
         where
-           unew = (u - (a + c))
+           unew = u - (a + c)
            gnew = unew + g
            gnew' = g + a + c
            l   = a
            h   = c
 outcomes (Triple l h g) (TTrip (a, b, c) (d, e, f))
-    | valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) == True = 
+    | valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) = 
         [Triple lnew hnew gnew] ++
         [Triple lnew hnew gnew] ++
         [Triple lnew' hnew' gnew']            
-    | otherwise = error ("Invalid state or test")
+    | otherwise = error "Invalid state or test"
             where
                 lnew = a+d
                 lnew' = l-lnew
                 hnew = b+e
                 hnew' = h-hnew
                 gnew = g+lnew'+hnew'
-                gnew' = g+a+b+d+e
+                gnew' = g+lnew+hnew
 
 weighings :: State -> [Test]
 weighings (Pair u g) = [TPair (a,b) (a+b, 0) | a<-[0..u], b<-[0..g],
@@ -106,10 +103,10 @@ minHeight xs = minimumBy (compare `on` height) xs
 
 mktree :: State -> Tree
 mktree s
-    | (final s) == True = Stop s
+    | final s = Stop s
     | otherwise = minHeight (map subTree (tests s))
         where
-            subTree = (\t -> (Node t (map mktree (outcomes s t))))
+            subTree t = Node t (map mktree (outcomes s t))
 
 data TreeH = StopH State | NodeH Int Test [TreeH]
     deriving Show
@@ -119,8 +116,8 @@ heightH (StopH s) = 0
 heightH (NodeH h t ts) = h
 
 treeH2tree :: TreeH -> Tree
-treeH2tree (StopH s) = (Stop s)
-treeH2tree (NodeH h t ths) = (Node t (map treeH2tree ths))
+treeH2tree (StopH s) = Stop s
+treeH2tree (NodeH h t ths) = Node t (map treeH2tree ths)
 
 nodeH :: Test -> [TreeH] -> TreeH
 nodeH t ths = NodeH h t ths
@@ -130,15 +127,15 @@ nodeH t ths = NodeH h t ths
                 -- version ((+ 1) . maximum) (map heightH ths)
 
 tree2treeH :: Tree -> TreeH
-tree2treeH (Stop s) = (StopH s)
+tree2treeH (Stop s) = StopH s
 tree2treeH (Node t ts) = nodeH t (map tree2treeH ts)
 
 mktreeH :: State -> TreeH
 mktreeH s
-    | (final s) == True = (StopH s)
+    | final s = StopH s
     | otherwise = minimumBy (compare `on` heightH) $ map subTree (tests s)
         where       
-            subTree = (\t -> nodeH t (map mktreeH (outcomes s t)))
+            subTree t = nodeH t (map mktreeH (outcomes s t))
 
 optimal :: State -> Test -> Bool
 optimal (Pair u g) (TPair (a,b) (ab,0)) = 
@@ -159,16 +156,15 @@ bestTests s = filter (optimal s) (weighings s)
 
 mktreeG :: State -> TreeH
 mktreeG s
-    | (final s) == True = StopH s
+    | final s = StopH s
     | otherwise = (\t -> nodeH t (map mktreeG (outcomes s t))) bestTest
         where            
             bestTest = head (bestTests s)
 
 mktreesG :: State -> [TreeH]
 mktreesG s
-    | (final s) == True = [StopH s]
+    | final s = [StopH s]
     | otherwise = makeTree
         where
             optimalTests = bestTests s
-            makeTree = map (\t -> nodeH t (map mktreeG (outcomes s t))) 
-                $ optimalTests
+            makeTree = map (\t -> nodeH t (map mktreeG (outcomes s t))) optimalTests

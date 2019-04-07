@@ -124,25 +124,30 @@ There is always three outcomes generated. In a case when coins in both pans bala
 
 > outcomes :: State -> Test -> [State]
 > outcomes (Pair u g) (TPair (a, b) (c, d))
->     | valid (Pair u g) (TPair (a, b) (c, d)) == True = 
->         [Pair un gc] ++
->         [Triple l h gcc] ++
->         [Triple l h gcc]        
->     | otherwise = error ("Invalid state or test" ++ (show (Pair u g)))
+>     | valid (Pair u g) (TPair (a, b) (c, d)) = 
+>         [Pair unew gnew'] ++
+>         [Triple l h gnew] ++
+>         [Triple l h gnew]        
+>     | otherwise = error "Invalid state or test"
 >         where
->            un =  (u - (a + c))
->            gcc = (u - (a + c)) + g
->            gc  = g + a + c
+>            unew = u - (a + c)
+>            gnew = unew + g
+>            gnew' = g + a + c
 >            l   = a
 >            h   = c
 > outcomes (Triple l h g) (TTrip (a, b, c) (d, e, f))
->     | valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) == True = 
->         [Triple (a+d) (b+e) (g+(l-(a+d))+(h-(b+e)))] ++
->         [Triple (a+d) (b+e) (g+(l-(a+d))+(h-(b+e)))] ++
->         [Triple (l-(a+d)) (h-(b+e)) (g+a+b+d+e)]
->     | otherwise = error ("Invalid state or test:" ++ " "
->         ++ (show (Triple l h g)) ++ " "
->         ++ (show (TTrip (a, b, c) (d, e, f))))
+>     | valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) = 
+>         [Triple lnew hnew gnew] ++
+>         [Triple lnew hnew gnew] ++
+>         [Triple lnew' hnew' gnew']            
+>     | otherwise = error "Invalid state or test"
+>             where
+>                 lnew = a+d
+>                 lnew' = l-lnew
+>                 hnew = b+e
+>                 hnew' = h-hnew
+>                 gnew = g+lnew'+hnew'
+>                 gnew' = g+lnew+hnew
 
 Weighings
 --
@@ -173,19 +178,22 @@ Predicates for `Triple`:
 >      (a+b) > 0,
 >      ((2*a)+b) <= u,
 >      b <= g]
-> weighings (Triple l h g) = [TTrip (a, b, c) (d, e, f)| k1<-[1..k],
+> weighings (Triple l h g) = [TTrip (a, b, c) (d, e, f) | k1<-[1..k],
 >      (a, b, c) <- choices k1 (l, h, g),
 >      (d, e, f) <- choices k1 (l, h, g),
->       c == 0 || f == 0, (a,b,c) <= (d,e,f), (c+f) <= g, (b+e) <= h, (a+d) <= l, (a+b+c) == (d+e+f), (a+b+c) > 0]
+>      c == 0 || f == 0,
+>      (a,b,c) <= (d,e,f),
+>      (c+f) <= g, (b+e) <= h, (a+d) <= l,
+>      (a+b+c) == (d+e+f),
+>      (a+b+c) > 0]
 >         where
 >             k = (l+h+g) `div` 2
 
 `choices` function uses set comprehension with predicates to generate valid selections of `k` coins.
 
 > choices :: Int -> (Int, Int, Int) -> [(Int, Int, Int)]
-> choices k (l, h, g) = [(i,j,k-i-j)| i<-[0..l], j<-[0..h],
->                       (k-i-j) <= g,
->                       (k-i-j) >= 0]
+> choices k (l, h, g) = [(i,j,e)| i<-[0..l], j<-[0..h], 
+>                             let e = k-i-j, e <= g, e >= 0] 
 
 Special purpose ordering as instance of `Ord` typeclass
 --
@@ -268,23 +276,16 @@ For non-empty list it calculates the height of each of the element, then returns
 
 > minHeight :: [Tree] -> Tree
 > minHeight [] = error "Tree cannot be empty" 
-> minHeight xs = snd 
->     $ head 
->     $ sortBy (compare `on` (\(y,_) -> y)) 
->     $ map (\x -> (height x, x)) xs
+> minHeight xs = minimumBy (compare `on` height) xs
 
 Finally, we can define our function that constructs a solution process as a Tree. For all productive tests generates tree recursively for each of the outcomes of each such test, then pick up the one that yields the best tree overall.
 
 > mktree :: State -> Tree
 > mktree s
->     | (final s) == True = Stop s
->     | otherwise = minHeight 
->         $ map subTree
->         $ productiveTests
+>     | final s = Stop s
+>     | otherwise = minHeight (map subTree (tests s))
 >         where
->             productiveTests = tests s
->             subTree = (\t -> (Node t (map mktree (getOutcomes s t))))
->             getOutcomes = (\s t -> (outcomes s t))
+>             subTree t = Node t (map mktree (outcomes s t))
 
 \newpage
 
@@ -314,18 +315,20 @@ Now we need to implement a set of new functions that work on `TreeH` rather than
 `treeH2tree` maps `TreeH` type to `Tree`, after map `TreeH` loses direct access to its height.
 
 > treeH2tree :: TreeH -> Tree
-> treeH2tree (StopH s) = (Stop s)
-> treeH2tree (NodeH h t ths) = (Node t (map treeH2tree ths))
+> treeH2tree (StopH s) = Stop s
+> treeH2tree (NodeH h t ths) = Node t (map treeH2tree ths)
 
 `nodeH` is a function that for, given `Test` and list of trees, construct a new tree with height.
 
 > nodeH :: Test -> [TreeH] -> TreeH
-> nodeH t ths = NodeH ((+) 1 $ maximum $ map heightH ths) t ths
+> nodeH t ths = NodeH h t ths
+>             where
+>                 h = (+ 1) $ maximum (map heightH ths)
 
 tree2treeH is just an inverse of `treeH2tree`.
 
 > tree2treeH :: Tree -> TreeH
-> tree2treeH (Stop s) = (StopH s)
+> tree2treeH (Stop s) = StopH s
 > tree2treeH (Node t ts) = nodeH t (map tree2treeH ts)
 
 
@@ -337,12 +340,10 @@ Finally, we can implement a function that constructs a tree for a given state.
 
 > mktreeH :: State -> TreeH
 > mktreeH s
->     | (final s) == True = (StopH s)
->     | otherwise = head $ sortBy (compare `on` heightH) $ subTree $ productiveTests
->         where            
->             productiveTests = tests s            
->             subTree = map (\t -> nodeH t (map mktreeH (getOutcomes s t)))
->             getOutcomes = (\s t -> (outcomes s t))
+>     | final s = StopH s
+>     | otherwise = minimumBy (compare `on` heightH) $ map subTree (tests s)
+>         where       
+>             subTree t = nodeH t (map mktreeH (outcomes s t))
 
 As it was stated in the assignment text. This approach does not massively improve performance.
 
@@ -374,22 +375,20 @@ This function was copied from the assignment description.
 
 > mktreeG :: State -> TreeH
 > mktreeG s
->     | (final s) == True = (StopH s)
->     | otherwise = subTree $ bestTest
+>     | final s = StopH s
+>     | otherwise = (\t -> nodeH t (map mktreeG (outcomes s t))) bestTest
 >         where            
->             bestTest = head $ bestTests s
->             subTree = (\t -> nodeH t (map mktreeG (getOutcomes s t)))
->             getOutcomes = (\s t -> (outcomes s t))
+>             bestTest = head (bestTests s)
 
 `mktreesG` builds trees based on all optimal tests.
 
 > mktreesG :: State -> [TreeH]
 > mktreesG s
->     | (final s) == True = [StopH s]
->     | otherwise = concat $ makeTree
+>     | final s = [StopH s]
+>     | otherwise = makeTree
 >         where
 >             optimalTests = bestTests s
->             makeTree = map (\t -> map mktreeG (outcomes s t)) $ optimalTests
+>             makeTree = map (\t -> nodeH t (map mktreeG (outcomes s t))) optimalTests
 
 Conclusions
 ==
