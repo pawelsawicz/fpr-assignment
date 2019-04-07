@@ -99,7 +99,7 @@ In addition to that, some predicates check the validity of the test against the 
 > valid (Pair u g) (TPair (a, b) (c ,d)) =
 >     (a+b) == (c+d) &&
 >     (a+c) <= u && 
->     (a+b+c+d) <= (u+g)
+>     (b+d) <= g
 > valid (Triple l h g) (TTrip (a, b, c) (d, e, f)) = 
 >     (a+b+c) == (d+e+f) &&
 >     (a+d) <= l &&
