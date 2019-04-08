@@ -34,6 +34,8 @@ In Haskell by default, you are given access to `Prelude` library, which contains
 > import Data.Ord
 > import Data.Function
 
+\newpage
+
 State and Test Algebraic data types
 ==
 
@@ -67,6 +69,8 @@ We model conducted weightings by the data type `Test.`
 
 > data Test = TPair (Int, Int) (Int, Int) | TTrip (Int,Int,Int) (Int,Int,Int)
 >  deriving (Eq, Show)
+
+\newpage
 
 Cartesian product and series of functions
 --
@@ -149,6 +153,8 @@ There is always three outcomes generated. In a case when coins in both pans bala
 >                 gnew = g+lnew'+hnew'
 >                 gnew' = g+lnew+hnew
 
+\newpage
+
 Weighings
 --
 
@@ -195,6 +201,8 @@ Predicates for `Triple`:
 > choices k (l, h, g) = [(i,j,e)| i<-[0..l], j<-[0..h], 
 >                             let e = k-i-j, e <= g, e >= 0] 
 
+\newpage
+
 Special purpose ordering as instance of `Ord` typeclass
 --
 
@@ -206,8 +214,10 @@ Previously in the section about `deriving` keyword, I explained that the compile
     
 Typeclass `Ord` has two functions that are mandatory to be provided with implementation, if you want an instance of this type class.
 
+```haskell
 1. (<) :: a -> a -> Bool 
 2. (<=) :: a -> a -> Bool
+```
 
 > instance Ord State where
 >     (Pair _ _) < (Triple _ _ _) = False
@@ -270,6 +280,8 @@ Firstly, `final` is a predicate that determines whether `State` is final. The st
 > height (Stop s) = 0
 > height (Node _ xs) = 1 + maximum (map height xs)
 
+\newpage
+
 `minHeight` is a partial function that throws an error for an empty list.
 
 For non-empty list it calculates the height of each of the element, then returns a 2-tuple of Tree and its height. Then sort a list by height, lastly select the first element.
@@ -331,6 +343,7 @@ tree2treeH is just an inverse of `treeH2tree`.
 > tree2treeH (Stop s) = StopH s
 > tree2treeH (Node t ts) = nodeH t (map tree2treeH ts)
 
+\newpage
 
 As you can notice a composition of `heightH` and `tree2treeH` (such that `heightH` after `tree2treeH`) is equal to  = `height`. This equality holds due to function composition law. 
 Let's do quick type check.  `heightH` has a type `TreeH -> Int`, `tree2treeH` has a type `Tree -> TreeH`. Composition of those two functions has type
@@ -389,6 +402,8 @@ This function was copied from the assignment description.
 >         where
 >             optimalTests = bestTests s
 >             makeTree = map (\t -> nodeH t (map mktreeG (outcomes s t))) optimalTests
+
+\newpage
 
 Conclusions
 ==
