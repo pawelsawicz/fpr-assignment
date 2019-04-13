@@ -17,7 +17,7 @@ At the beginning of this essay, you might find a complete explanation of the fun
 
 It should be noted here that puzzle related narrative is either copy or rephrased text from the assignment. I am aware of the `module` concept in Haskell, but in the case of this submission, I did not use it.
 
-Puzzle described as follows:
+The puzzle described as follows:
 
   > There are n > 2 coins, identical in appearance; either all are genuine, or exactly one of them is fake. It is unknown whether the fake coin is lighter or heavier then genuine one. You have two-pan balance scale without weights. The problem is to find whether all the coins are genuine and, if not, to find the fake coin and to establish whether it is lighter or heavier than the genuine ones. Design an algorithm to solve the problem, in the minimum number of weighings.
 
@@ -32,7 +32,7 @@ Haskell by default provides us access to `Prelude` library, which contains core 
 
 \newpage
 
-2. State and Test Algebraic data types
+2. State and Test algebraic data types
 ==
 
 Our algorithm simulates a physical solution to the problem. The solution must maintain up to four piles of coins: `U` as unknown, `G` as genuine, `L` as light, `H` as heavy and it goes through two distinct phases. The first phase we do not know whether any coin is fake; we can only consider pile U and G, that is our first state. If the two groups don't balance, then one of those coins must be fake; we move coins to L pile and H pile and rest of them to G pile. Now we are in the second state.
@@ -40,10 +40,8 @@ Our algorithm simulates a physical solution to the problem. The solution must ma
 2.1 State
 --
 
-We are going to use algebraic data types (ADT) to represent some data in our program. In short, ADT is a composition type which is formed by a combination of other types. You can think of it a little bit like a struct in C.
-We model state of a simulation by introducing `State` ADT, it has two data constructors `Pair` and `Triple`.
-
-Everything in Haskell is a function; therefore data constructor is also a function.
+We are going to use algebraic data types (ADT) to represent some data in our program. In short, ADT is a composition type which is formed by a combination of other types. You can think of it similarly to a struct in C.
+We model state of a simulation by introducing `State` ADT, with two data constructors `Pair` and `Triple`. Those two data constructors are also a function.
 
 > data State = Pair Int Int | Triple Int Int Int
 >  deriving (Eq, Show)
@@ -51,38 +49,37 @@ Everything in Haskell is a function; therefore data constructor is also a functi
 2.2 Partial application
 --
 
-`Pair` constructor is a type of `Int -> Int -> State`.
+The `Pair` constructor is a type of `Int -> Int -> State`.
 
-It means that we can look at this type in two ways. First, as a function that takes two arguments and returns a value of `State` type, or it takes one argument and returns a function that takes one argument and returns a value of `State`. In latter, we say that function can be partially applied.
+It means that we can look at this type in two ways. First, as a function that takes two arguments and returns a value of `State` type, or it takes one argument and returns a function that takes one argument and returns a value of `State`. In the latter case, we say that the function can be partially applied.
 
 2.3 Test
 --
 
-We model conducted weightings by the data type `Test`, it has two data constructors, `TPair` and `TTrip`. `TPair` constructor takes two 2‑tuple. `TTriple` constructor takes two 3-tuple partial application also applies to both constructors.
+We model conducted weightings by the data type `Test`, with two data constructors, `TPair` and `TTrip`. The `TPair` constructor takes two 2‑tuples. The `TTriple` constructor takes two 3-tuples.
 
 > data Test = TPair (Int, Int) (Int, Int) | TTrip (Int,Int,Int) (Int,Int,Int)
 >  deriving (Eq, Show)
 
 \newpage
 
-2.4 Cartesian product and series of functions
+2.4 Product type or series of functions
 --
 
-As you can see, there are two different ways of representing an argument of a function as a cartesian product (tuple) or as a series of unary functions.
-In Haskell, we can translate arguments represented as an n-tuple to series 
-of unary functions by using currying, and vice versa.
+As you can see, there are two different ways of representing an argument of a function as a product type (tuple) or as a series of unary functions.
+In Haskell, we can translate arguments represented as an n-tuple to a series of unary functions by using currying, and vice versa.
 
-2.5 deriving keyword
+2.5 The keyword deriving
 --
 
 Another piece that needs an explanation is the keyword `deriving`. 
-Keyword deriving allows us to make a datatype an instance of typeclass, to put it another way, we say that datatype has some behaviour. In the case of  `State` and `Test`, it derives (Eq and Show typeclass).
+The keyword deriving allows us to make a datatype an instance of typeclass. To put it another way, we say that datatype has some behaviour. In the case of  `State` and `Test`, it derives "Eq" and "Show" typeclass.
 
-Generally, the compiler automatically finds out default implementation for functions to make an instance of typeclass. Otherwise, we are forced to denote it manually as below:
+Generally, the compiler automatically finds out the default implementation for functions to make an instance of typeclass. Otherwise, we are forced to denote it manually as below:
 
 ```haskell
-instance Eq Test where
-    show :: a -> String
+instance Show Test where
+    show :: Test -> String
 ```
 
 Now we can start implementing our first function to solve this puzzle. We shall define `valid` function such that determines whether a given test is valid in a given state.
@@ -112,11 +109,11 @@ By using pattern matching, it makes sure that `TPair` test is conducted in a `Pa
 3.1 Constructing outcomes
 --
 
-Next function that we need to define is `outcomes` such that for state `s` and test `t` that `valid s t = True`, works out possible outcomes.
+The next function that we need to define is `outcomes` that for a given state `s` and test `t` such that `valid s t = True`, works out possible outcomes.
 
 There are always three outcomes being generated. In a case when coins in both pans balance out, we know that all those coins are genuine, then we move them to G pile. Otherwise, we move coins from pans respectively to the lighter, heavier and genuine pile.
 
-Please note that `outcomes` is a partial function, if `valid s t` = False then it returns an error, otherwise proceed with generation of outcomes.
+Note that the `outcomes` is a partial function if `valid s t` = False then it throws an error, otherwise proceed with the generation of outcomes.
 
 > outcomes :: State -> Test -> [State]
 > outcomes (Pair u g) (TPair (a, b) (c, d))
@@ -150,9 +147,9 @@ Please note that `outcomes` is a partial function, if `valid s t` = False then i
 3.2 Weighings
 --
 
-Next function that we would like to implement is a function that generates sensible tests. Please see predicates for `Pair`, `Triple` below. Later we will make sure that tests make progress (gives more information about genuine coins) on a state by introducing special ordering.
+The next function that we would like to implement is a function that generates sensible tests. See predicates for `Pair`, `Triple` below. Later we will make sure that tests make progress on a state by introducing special ordering (gives more information about genuine coins).
 
-I used set comprehension with predicates to generate accurate weighings. `Pair` case implementation is straightforward, `Triple` is a bit trickier, because we need to uses subsidiary function `choices`.
+I used a set comprehension with predicates to generate accurate weighings. The `Pair` case implementation is straightforward. The `Triple` is a bit trickier because we need to use the subsidiary function `choices`.
 
 Predicates for `Pair`:
 
@@ -186,7 +183,7 @@ Predicates for `Triple`:
 >         where
 >             k = (l+h+g) `div` 2
 
-`choices` function uses set comprehension with predicates to generate valid selections of `k` coins. My initial implementation did not include `let e = (k-i-j)`, so a value of `(k-i-j)` would have been recalculated every time, by introducing local variable I saved some CPU cycles.
+The `choices` function uses a set comprehension with predicates to generate valid selections of `k` coins. My initial implementation did not include `let e = (k-i-j)`, so a value of `(k-i-j)` would have been recalculated every time, by introducing local variable I saved a significant amount of CPU cycles due to the space of the solution.
 
 > choices :: Int -> (Int, Int, Int) -> [(Int, Int, Int)]
 > choices k (l, h, g) = [(i,j,e)| i<-[0..l], j<-[0..h], 
@@ -197,22 +194,14 @@ Predicates for `Triple`:
 3.3 Special purpose ordering as instance of `Ord` typeclass
 --
 
-How to keep just productive tests? In order to check if `State` is making progress, we model this in term of special purpose ordering, which we use to determine whether state gives strictly more information about the coins. Because the number of coins is preserved, it generally suffices to do a comparison by the number of genuine coins. Moreover `Triple` state always represent progress from `Pair` state.
+To check if the `State` is making progress, we model this in term of special purpose ordering, that we use to determine whether the state gives strictly more information about the coins. Because the number of coins is preserved, it generally suffices to make a comparison by the number of genuine coins. Moreover `Triple` state always represent progress from `Pair` state.
 
-Previously I mentioned that sometimes we are forced to manually implement an instance of typeclass, it is when the compiler cannot generate an implementation for type class function for an unusual data type, or when there is a need for custom implementation in a specific context. In our case, it is this special ordering that we would like to have on the number of genuine coins.
+Previously I mentioned that sometimes we are forced to implement an instance of typeclass manually. It is when the compiler cannot generate an implementation for a type class function for an unusual data type, or when there is a need for custom implementation in a specific domain context. In our case, it is this special ordering that we would like to have on the number of genuine coins.
     
-Typeclass `Ord` has two functions that are mandatory to be provided with implementation:
-
-```haskell
-1. (<) :: a -> a -> Bool 
-2. (<=) :: a -> a -> Bool
-```
+According to the documentation (hackage), an instance of the `Ord` requires a either of function to be implemented:
+`(<=) :: a -> a -> Bool`{.haskell} or `compare :: a -> a -> Ordering`{.haskell}
 
 > instance Ord State where
->     (Pair _ _) < (Triple _ _ _) = False
->     (Pair _ g1) < (Pair _ g2) = g2 < g1 
->     (Triple _ _ g1) < (Triple _ _ g2) = g2 < g1
-> 
 >     (Pair _ _) <= (Triple _ _ _) = False
 >     (Pair _ g1) <= (Pair _ g2) = g2 <= g1
 >     (Triple _ _ g1) <= (Triple _ _ g2) = g2 <= g1
@@ -220,14 +209,14 @@ Typeclass `Ord` has two functions that are mandatory to be provided with impleme
 3.4 Productive tests
 --
 
-Now with all previous work done, we can implement a `productive` predicate, that checks if all outcomes are making progress. I used higher order function `all` with a partially applied predicate on outcomes for `state` and `test`.
+Now with all previous work done, we can implement a `productive` predicate, that checks if all outcomes are making progress. I used the higher order function `all` with a partially applied predicate on the outcomes function.
 
 > productive :: State -> Test -> Bool
 > productive s t = all (s > ) (outcomes s t)
 
-Finally, we fulfil the third criterion by keeping only the `productive` tests among the possible `weighings`.
+Finally, we are ready to fulfil the third criterion by keeping only the `productive` tests among the possible `weighings`.
 
-`test` function is made up of three other functions: `weighings`, `productive` and `filter`. Filter function as the name indicates it filters out a collection by a provided predicate and preserve just those elements which follow predicate. Similarly to the previous function, I can take advantage of a partially applied predicate.
+The `test` function is made up of three other functions: the `weighings`, the `productive` and the `filter`. The filter function filters out a collection by a provided predicate and preserves just those elements which follow predicate. Similarly to the previous function, I can take advantage of a partially applied predicate..
 
 > tests :: State -> [Test]
 > tests s = filter (productive s) (weighings s)
@@ -237,11 +226,11 @@ Finally, we fulfil the third criterion by keeping only the `productive` tests am
 4. Decision tree
 ==
 
-Now we can introduce `Tree` data type that represents a weighting process. It's a ternary tree that contains itself. In other words, it's a recursive datatype.
+The `Tree` data type represents a weighting process. It's a ternary tree that contains itself. In other words, it's a recursive datatype.
      
-`Tree` has two data constructors:
-    
-1. `Stop`, represents the final state; it's a leaf of the tree.
+`Tree` has two data constructors:    
+
+1. `Stop`, represents a final state; it's a leaf of the tree.
 2. `Node represents a weighting, and it's a node of the tree.
 
 > data Tree = Stop State | Node Test [Tree]
@@ -250,9 +239,9 @@ Now we can introduce `Tree` data type that represents a weighting process. It's 
 4.1 Constructing a tree
 --
 
-Let's now implement some functions that will help us to construct a valid weighting process and represent it as our `Tree` data type.
+Let's now implement functions that will help us to construct a valid weighting process and represent it as our `Tree` data type.
 
-Firstly, `final` is a predicate that determines whether `State` is final. The state is final when all coins are genuine or that one coin is fake. I use pattern matching and guards to check both states for this requirement.
+Firstly, the `final` is a predicate that determines whether a `State` is final. The state is final when all coins are genuine or that one coin is fake. I use a pattern matching and guards to check that.
 
 > final :: State -> Bool
 > final (Pair u g)
@@ -263,7 +252,7 @@ Firstly, `final` is a predicate that determines whether `State` is final. The st
 >     | l == 0 && h == 1 = True
 >     | otherwise = False
 
-`height` function calculates the height of a tree. If it's a leaf (Stop) then returns zero. Otherwise (Node), it recursively calculates the height of a tree and then selects a maximum value.
+The `height` function calculates the height of a tree. If it's a leaf (Stop) then returns zero. Otherwise (Node), it recursively calculates the height of a tree and then selects a maximum value.
 
 > height :: Tree -> Int
 > height (Stop s) = 0
@@ -271,21 +260,20 @@ Firstly, `final` is a predicate that determines whether `State` is final. The st
 
 \newpage
 
-`minHeight` is a partial function that throws an error for an empty list.
-For non-empty list, it returns the smallest height from the collection.
+The `minHeight` function is a partial function that throws an error for an empty list. For a non-empty list, it returns a tree with the smallest height from the collection.
 
 > minHeight :: [Tree] -> Tree
 > minHeight [] = error "Tree cannot be empty" 
 > minHeight xs = minimumBy (compare `on` height) xs
 
-Compare above with my initial implementation that is below. It uses `sortBy`. At first sight, those two functions look the same, but in fact performance wise they are not.
+Compare above with my initial implementation that is below. Ones use `sortBy`. At first sight, those two functions look similar, but in fact, their performance differs.
 
 > minHeight' xs = head $ sortBy (compare `on` height) xs
 
 4.2 Tree
 --
 
-Finally, we can define our function that constructs a solution process as a Tree. For all productive tests generates tree recursively for each of the outcomes of each such test, then pick up the one that yields the best tree overall.
+Finally, we can define our function that constructs a solution process as a tree. For all productive tests generates tree recursively for each of the outcomes of each such test, then pick up the one that yields the best tree overall. 
 
 > mktree :: State -> Tree
 > mktree s
@@ -311,28 +299,28 @@ We define new datatype `TreeH`. As you can see it's very similar to the previous
 > data TreeH = StopH State | NodeH Int Test [TreeH]
 >  deriving Show
 
-Now we need to implement a set of new functions that work on `TreeH` rather than on `Tree` so that later on we can use it to construct weighting process as `TreeH.`
+Now we need to implement a set of new functions that work on `TreeH` rather than on `Tree` so that later on we can use it to construct the weighting process as `TreeH.`
 
-`heightH` extracts height out of `TreeH` type. This function is predefined in assignment text.
+The `heightH` extracts height out of `TreeH` type. This function is predefined in the assignment text.
 
 > heightH :: TreeH -> Int
 > heightH (StopH s) = 0
 > heightH (NodeH h t ts) = h
 
-`treeH2tree` maps `TreeH` type to `Tree`, after map `TreeH` loses direct access to its height.
+The `treeH2tree` maps `TreeH` type to `Tree`.
 
 > treeH2tree :: TreeH -> Tree
 > treeH2tree (StopH s) = Stop s
 > treeH2tree (NodeH h t ths) = Node t (map treeH2tree ths)
 
-`nodeH` is a function that for, given `Test` and list of trees, construct a new tree with height.
+The `nodeH` is a smart constructor that for, a given `Test` and a list of trees, construct a new tree with height. We could use a function composition: `((+ 1) . maximum))` but in my opinion, it would deteriorate the readability.
 
 > nodeH :: Test -> [TreeH] -> TreeH
 > nodeH t ths = NodeH h t ths
 >             where
 >                 h = (+ 1) $ maximum (map heightH ths)
 
-tree2treeH is just an inverse of `treeH2tree`.
+The `tree2treeH` is an inverse function of the `treeH2tree`.
 
 > tree2treeH :: Tree -> TreeH
 > tree2treeH (Stop s) = StopH s
@@ -340,7 +328,7 @@ tree2treeH is just an inverse of `treeH2tree`.
 
 \newpage
 
-As you can notice a composition of `heightH` and `tree2treeH` (such that `heightH` after `tree2treeH`) is equal to  = `height`. This equality holds due to function composition law. 
+As you can notice a composition of `heightH` and `tree2treeH` (such that `heightH` after `tree2treeH`) is equal to  = `height`. This equality holds due to function composition law.
 
 Finally, we can implement a function that constructs a tree for a given state.
 
@@ -372,12 +360,12 @@ This function was copied from the assignment description.
 >                 p = 3 ^ (t - 1)
 >                 t = ceiling (logBase 3 (fromIntegral (l+h)))
 
-`bestTests` filters out not optimal weighings. I used a similar approach as in `tests` function.
+The `bestTests` filters out non-optimal weighings. I used a similar approach as in the `tests` function.
 
 > bestTests :: State -> [Test]
 > bestTests s = filter (optimal s) (weighings s)
 
-`mktreeG` builds tree similarly to `mktreeH`, out of the first optimal test, rather than exploring all possible tests as it's a case in `mktreeH` and `mktree`.
+The `mktreeG` builds a tree similar to the `mktreeH`, but it only uses a first optimal test, rather than exploring all possible tests as it is a case in the `mktreeH` and `mktree`.
 
 > mktreeG :: State -> TreeH
 > mktreeG s
@@ -386,7 +374,7 @@ This function was copied from the assignment description.
 >         where            
 >             bestTest = head (bestTests s)
 
-`mktreesG` builds trees based on all optimal tests.
+The `mktreesG` builds trees based on all optimal tests.
 
 > mktreesG :: State -> [TreeH]
 > mktreesG s
@@ -401,23 +389,19 @@ This function was copied from the assignment description.
 7. Conclusion
 ==
 
-Firstly, I did not manage to solve this puzzle correctly. Constructing a tree does not return the correct minimal height tree. For n=8, Program outputs tree of height four, rather than three. I presume that I have made a mistake in the implementation of `outcomes` function. 
-
-There is also another discrepancy. In function `tests` which returns three tests, however, it supposes to return four productive tests (as it is noted in the assignment).
+Firstly, I did not manage to solve this puzzle correctly. Constructing a tree does not return the correct minimal height tree. For n=8, Program outputs tree of height four, rather than three. I presume that I have made a mistake in the implementation of `outcomes` function.  There is also another discrepancy. The function `tests` for (Triple 3 0 6), returns three tests. However, it supposes to return four productive tests (as in the assignment).
     
 My program runs slow in comparison with an example's answer from the assignment. For `Pair (8 0)` elapsed time is about (150sec.) and allocated space (94GB).
     
-Haskell is a perfect tool for mathematical puzzles, domain modelling, concurrent and parallel computation. For instance, a code is much more compacted in compare with popular languages like (C, C#, Java, Python).
-Another characteristic of Haskell is that it is strongly typed, which allows us to spot type errors at the compilation time instead of runtime.
+Haskell is a perfect tool for mathematical puzzles, domain modelling, concurrent and parallel computation. For instance, code is much more compacted in compare with popular languages like (C, C#, Java, Python).
+Another characteristic of Haskell is that it is statically typed, which allows us to spot type errors at the compilation time instead of runtime. That encourages programmers to sketch a scaffold of a program by decomposing problem into smaller pieces and denoting just a functions' types. Then we can implement the most naive version of our program and work on improvements.
     
-Haskell encourages programmers to sketch a scaffold of a program by decomposing problem into smaller pieces and denoting just a functions' types. Then we can implement the most naive version of our program and work on improvements.
+There exists tooling around the platform, there is a build tool, styling checker (HLint) which I was actively using during my coding, and it warned me that I should not use lambdas (there were few lambdas here and there).
     
-Tooling around the platform is also quite good, there is a build system, styling checkers (HLint) which I was actively using during my coding and it hints me that I should not use lambdas (there were few lambdas here and there).
-    
-In a some functions' implementation, I decited to be more explicit in terms of puzzle logic (predicates on set comprehension: function `outcomes`, `weightings`) mainly to increase the visibility of puzzle requirements.
+In some functions' implementation, I decided to be more explicit in terms of puzzle logic (mainly in predicates of the `outcomes`, `weightings`), primarily to increase the readability of the puzzle related logic.
     
 Last but not least, there are a few areas where I would like to apply further improvements on my code:
     
-1. Error handling, by using Either monad pattern (although it could be an overkill in this case)
+1. Error handling, by using `Either` monad pattern (although it could be an overkill in this case)
 2. Add test coverage for some functions, like `outcomes` using QuickCheck.
-3. Try to make Tree a monoid; it could simplify some functions. Although in current definition it does not follow monoid laws.
+3. Try to make Tree and TreeH a monoid; it could simplify some functions. Although in current definition it does not follow monoid laws.

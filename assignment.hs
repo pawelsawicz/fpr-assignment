@@ -67,10 +67,6 @@ choices k (l, h, g) = [(i,j,e)| i<-[0..l], j<-[0..h],
                             let e = k-i-j, e <= g, e >= 0]        
 
 instance Ord State where
-    (Pair _ _) < (Triple _ _ _) = False
-    (Pair _ g1) < (Pair _ g2) = g2 < g1 
-    (Triple _ _ g1) < (Triple _ _ g2) = g2 < g1
-
     (Pair _ _) <= (Triple _ _ _) = False
     (Pair _ g1) <= (Pair _ g2) = g2 <= g1
     (Triple _ _ g1) <= (Triple _ _ g2) = g2 <= g1
