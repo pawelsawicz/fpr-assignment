@@ -40,8 +40,8 @@ Our algorithm simulates a physical solution to the problem. The solution must ma
 2.1 State
 --
 
-We are going to use algebraic data types (ADT) to represent some data in our program. In short, ADT is a composition type which is formed by a combination of other types. You can think of it similarly to a struct in C.
-We model state of a simulation by introducing `State` ADT, with two data constructors `Pair` and `Triple`. Those two data constructors are also a function.
+We are going to use algebraic data type to represent data in our program. In short, it is a composition type which is formed by a combination of other types. You can think of it similarly to a struct in C.
+We model state of a simulation by introducing `State` algebraic data type, with two data constructors `Pair` and `Triple`. Those two data constructors are also a function.
 
 > data State = Pair Int Int | Triple Int Int Int
 >  deriving (Eq, Show)
@@ -73,14 +73,17 @@ In Haskell, we can translate arguments represented as an n-tuple to a series of 
 --
 
 Another piece that needs an explanation is the keyword `deriving`. 
-The keyword deriving allows us to make a datatype an instance of typeclass. To put it another way, we say that datatype has some behaviour. In the case of  `State` and `Test`, it derives "Eq" and "Show" typeclass.
+The keyword deriving allows us to make a data type an instance of typeclass. To put it another way, we say that data type has some behaviour. In the case of  `State` and `Test`, it derives "Eq" and "Show" typeclass.
 
-Generally, the compiler automatically finds out the default implementation for functions to make an instance of typeclass. Otherwise, we are forced to denote it manually as below:
+Generally, the compiler automatically finds out the default implementation for functions to make an instance of type class. Otherwise, we are forced to denote it manually as below:
 
 ```haskell
-instance Show Test where
-    show :: Test -> String
+instance TypeClass OurType where
+  Implementation of functions 
 ```
+
+2.6 First function
+--
 
 Now we can start implementing our first function to solve this puzzle. We shall define `valid` function such that determines whether a given test is valid in a given state.
 
@@ -183,7 +186,7 @@ Predicates for `Triple`:
 >         where
 >             k = (l+h+g) `div` 2
 
-The `choices` function uses a set comprehension with predicates to generate valid selections of `k` coins. My initial implementation did not include `let e = (k-i-j)`, so a value of `(k-i-j)` would have been recalculated every time, by introducing local variable I saved a significant amount of CPU cycles due to the space of the solution.
+The `choices` function uses a set comprehension with predicates to generate valid selections of `k` coins. My initial implementation did not include `let e = (k-i-j)`, so a value of `(k-i-j)` would have been recalculated every time, by introducing local variable I saved a significant amount of CPU cycles.
 
 > choices :: Int -> (Int, Int, Int) -> [(Int, Int, Int)]
 > choices k (l, h, g) = [(i,j,e)| i<-[0..l], j<-[0..h], 
@@ -194,11 +197,11 @@ The `choices` function uses a set comprehension with predicates to generate vali
 3.3 Special purpose ordering as instance of `Ord` typeclass
 --
 
-To check if the `State` is making progress, we model this in term of special purpose ordering, that we use to determine whether the state gives strictly more information about the coins. Because the number of coins is preserved, it generally suffices to make a comparison by the number of genuine coins. Moreover `Triple` state always represent progress from `Pair` state.
+To check if the `State` is making progress, we model this in term of the special purpose order, that we use to determine whether the state gives strictly more information about the coins. Because the number of coins is preserved, it generally suffices to make a comparison by the number of genuine coins. Moreover `Triple` state always represent progress from `Pair` state.
 
 Previously I mentioned that sometimes we are forced to implement an instance of typeclass manually. It is when the compiler cannot generate an implementation for a type class function for an unusual data type, or when there is a need for custom implementation in a specific domain context. In our case, it is this special ordering that we would like to have on the number of genuine coins.
     
-According to the documentation (hackage), an instance of the `Ord` requires a either of function to be implemented:
+According to the documentation (hackage.haskell.org), an instance of the `Ord` requires either of the function to be implemented:
 `(<=) :: a -> a -> Bool`{.haskell} or `compare :: a -> a -> Ordering`{.haskell}
 
 > instance Ord State where
@@ -209,14 +212,14 @@ According to the documentation (hackage), an instance of the `Ord` requires a ei
 3.4 Productive tests
 --
 
-Now with all previous work done, we can implement a `productive` predicate, that checks if all outcomes are making progress. I used the higher order function `all` with a partially applied predicate on the outcomes function.
+Now with all previous work done, we can implement a `productive` predicate, that checks if all outcomes are making progress. I used the higher order function `all` with a partially applied predicate on the outcomes function value.
 
 > productive :: State -> Test -> Bool
 > productive s t = all (s > ) (outcomes s t)
 
 Finally, we are ready to fulfil the third criterion by keeping only the `productive` tests among the possible `weighings`.
 
-The `test` function is made up of three other functions: the `weighings`, the `productive` and the `filter`. The filter function filters out a collection by a provided predicate and preserves just those elements which follow predicate. Similarly to the previous function, I can take advantage of a partially applied predicate..
+The `test` function is made up of three other functions: the `weighings`, the `productive` and the `filter`. It filters out a collection by a provided predicate and preserves just those elements which follow predicate. Similarly to the previous function, I can take advantage of a partial application
 
 > tests :: State -> [Test]
 > tests s = filter (productive s) (weighings s)
@@ -226,12 +229,12 @@ The `test` function is made up of three other functions: the `weighings`, the `p
 4. Decision tree
 ==
 
-The `Tree` data type represents a weighting process. It's a ternary tree that contains itself. In other words, it's a recursive datatype.
+The `Tree` data type represents a weighting process. It's a ternary tree that contains itself. In other words, it's a recursive data type.
      
 `Tree` has two data constructors:    
 
 1. `Stop`, represents a final state; it's a leaf of the tree.
-2. `Node represents a weighting, and it's a node of the tree.
+2. `Node represents a weighting; it's a node of the tree.
 
 > data Tree = Stop State | Node Test [Tree]
 >  deriving (Show)
@@ -239,7 +242,7 @@ The `Tree` data type represents a weighting process. It's a ternary tree that co
 4.1 Constructing a tree
 --
 
-Let's now implement functions that will help us to construct a valid weighting process and represent it as our `Tree` data type.
+Let's now implement functions that will help us to construct a valid weighting process and represent it as the `Tree`.
 
 Firstly, the `final` is a predicate that determines whether a `State` is final. The state is final when all coins are genuine or that one coin is fake. I use a pattern matching and guards to check that.
 
@@ -266,7 +269,7 @@ The `minHeight` function is a partial function that throws an error for an empty
 > minHeight [] = error "Tree cannot be empty" 
 > minHeight xs = minimumBy (compare `on` height) xs
 
-Compare above with my initial implementation that is below. Ones use `sortBy`. At first sight, those two functions look similar, but in fact, their performance differs.
+Compare above with my initial implementation that is below. Ones use `sortBy`. At first sight, the result is the same, but in fact, their performance differs.
 
 > minHeight' xs = head $ sortBy (compare `on` height) xs
 
@@ -291,17 +294,17 @@ Finally, we can define our function that constructs a solution process as a tree
 --
 
 Program in the previous version works, but it is rather slow. 
-One of the problems is that it is recomputing the heights of trees.
-Now we introduce the notion of height on each Node so that we can compute it in constant time.
+One of the problems is that it is recomputing the height of the tree.
+Now we introduce the notion of the height on each Node so that we can compute it in constant time.
 
-We define new datatype `TreeH`. As you can see it's very similar to the previous `Tree` with one change, which is height in (NodeH) constructor.
+We define new data type `TreeH`. As you can see it's very similar to the previous `Tree` with one change, which is the height in (NodeH) constructor.
 
 > data TreeH = StopH State | NodeH Int Test [TreeH]
 >  deriving Show
 
 Now we need to implement a set of new functions that work on `TreeH` rather than on `Tree` so that later on we can use it to construct the weighting process as `TreeH.`
 
-The `heightH` extracts height out of `TreeH` type. This function is predefined in the assignment text.
+The `heightH` extracts the height out of a value of the `TreeH` type. This function is predefined in the assignment text.
 
 > heightH :: TreeH -> Int
 > heightH (StopH s) = 0
@@ -313,7 +316,7 @@ The `treeH2tree` maps `TreeH` type to `Tree`.
 > treeH2tree (StopH s) = Stop s
 > treeH2tree (NodeH h t ths) = Node t (map treeH2tree ths)
 
-The `nodeH` is a smart constructor that for, a given `Test` and a list of trees, construct a new tree with height. We could use a function composition: `((+ 1) . maximum))` but in my opinion, it would deteriorate the readability.
+The `nodeH` is a smart constructor that for, a given `Test` and a list of trees, construct a new tree with height. We could use a function composition: `((+ 1) . maximum))` but in my opinion, it would deteriorate the readability of the code.
 
 > nodeH :: Test -> [TreeH] -> TreeH
 > nodeH t ths = NodeH h t ths
@@ -389,19 +392,19 @@ The `mktreesG` builds trees based on all optimal tests.
 7. Conclusion
 ==
 
-Firstly, I did not manage to solve this puzzle correctly. Constructing a tree does not return the correct minimal height tree. For n=8, Program outputs tree of height four, rather than three. I presume that I have made a mistake in the implementation of `outcomes` function.  There is also another discrepancy. The function `tests` for (Triple 3 0 6), returns three tests. However, it supposes to return four productive tests (as in the assignment).
-    
-My program runs slow in comparison with an example's answer from the assignment. For `Pair (8 0)` elapsed time is about (150sec.) and allocated space (94GB).
-    
-Haskell is a perfect tool for mathematical puzzles, domain modelling, concurrent and parallel computation. For instance, code is much more compacted in compare with popular languages like (C, C#, Java, Python).
+Firstly, I did not manage to solve this puzzle correctly. Constructing the tree does not return the correct minimal height tree. For n=8, the program outputs the tree of the height of four, rather than three. I presume that I have made a mistake in the implementation of the `outcomes` function.  There is also another discrepancy. The function `tests` for (Triple 3 0 6), returns three tests. However, it supposes to return four productive tests (as in the assignment).
+
+My program runs slow in comparison with an example answer from the assignment. For the `Pair (8 0)` elapsed time is about (150sec.) and allocated space (94GB).
+
+I tried to be very explicit while implementing a predicate, whether it is a separate function or a predicate inside a set comprehension. A bunch of them could be further simplified, but I believe that explicitness is better in this case. Similarly, with variable naming, I kept names as close as possible with the assignment text. 
+
+Haskell is a perfect tool for mathematical puzzles, domain modelling, concurrent and parallel computation. For instance, the code is much more compacted in compare with popular languages like (C, C#, Java, Python).
 Another characteristic of Haskell is that it is statically typed, which allows us to spot type errors at the compilation time instead of runtime. That encourages programmers to sketch a scaffold of a program by decomposing problem into smaller pieces and denoting just a functions' types. Then we can implement the most naive version of our program and work on improvements.
     
-There exists tooling around the platform, there is a build tool, styling checker (HLint) which I was actively using during my coding, and it warned me that I should not use lambdas (there were few lambdas here and there).
+There is very rich tooling around the platform, styling checker (HLint) is one of them. I was actively using it during my coding. It warned me that I should not use lambdas (there were few lambdas here and there).
+     
+Last but not least, there are a few areas where I would like to apply further improvements to my code, in order of importance:
     
-In some functions' implementation, I decided to be more explicit in terms of puzzle logic (mainly in predicates of the `outcomes`, `weightings`), primarily to increase the readability of the puzzle related logic.
-    
-Last but not least, there are a few areas where I would like to apply further improvements on my code:
-    
-1. Error handling, by using `Either` monad pattern (although it could be an overkill in this case)
-2. Add test coverage for some functions, like `outcomes` using QuickCheck.
-3. Try to make Tree and TreeH a monoid; it could simplify some functions. Although in current definition it does not follow monoid laws.
+1. Add test coverage for some functions, like `outcomes` using QuickCheck, that could help me to spot the problem with my solution.
+2. Try to make Tree and TreeH a monoid; it could simplify some functions. Although in current definition it does not follow monoid laws.
+3. Error handling, by using `Either` monad pattern (although it could be an overkill in this case)
